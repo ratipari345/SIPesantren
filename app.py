@@ -136,44 +136,106 @@ elif menu == "Profil Pesantren":
         st.info("ℹ️ Belum ada data profil yang dimasukkan. Silakan isi form di atas.")
 
 # 3. DATA USTAD
+# 3. DATA USTAD
 elif menu == "Data Ustad":
     st.header("👨‍🏫 Manajemen Data Ustad / Pengajar")
-    with st.form("form_ustad", clear_on_submit=True):
-        id_ustad = st.text_input("ID Ustad")
-        nama = st.text_input("Nama Lengkap & Gelar")
-        bidang = st.text_input("Bidang Pengajaran / Kitab")
-        hp = st.text_input("No. HP / WhatsApp")
-        if st.form_submit_button("Simpan Data Ustad"):
-            if id_ustad and nama:
-                try:
-                    run_query("INSERT INTO ustad VALUES (?, ?, ?, ?)", (id_ustad, nama, bidang, hp))
-                    st.success(f"Data **{nama}** berhasil disimpan!")
-                except sqlite3.IntegrityError:
-                    st.error(f"ID Ustad '{id_ustad}' sudah terdaftar.")
-            else:
-                st.warning("ID dan Nama wajib diisi.")
+    
+    # Tab pilihan: Input Manual atau Impor Excel
+    tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
+    
+    with tab1:
+        with st.form("form_ustad", clear_on_submit=True):
+            id_ustad = st.text_input("ID Ustad")
+            nama = st.text_input("Nama Lengkap & Gelar")
+            bidang = st.text_input("Bidang Pengajaran / Kitab")
+            hp = st.text_input("No. HP / WhatsApp")
+            if st.form_submit_button("Simpan Data Ustad"):
+                if id_ustad and nama:
+                    try:
+                        run_query("INSERT INTO ustad VALUES (?, ?, ?, ?)", (id_ustad, nama, bidang, hp))
+                        st.success(f"Data ustad **{nama}** berhasil disimpan!")
+                    except sqlite3.IntegrityError:
+                        st.error(f"ID Ustad '{id_ustad}' sudah terdaftar.")
+                else:
+                    st.warning("ID dan Nama wajib diisi.")
 
-    st.subheader("Daftar Ustad")
+    with tab2:
+        st.subheader("Unggah Data Ustad Masal via Excel/CSV")
+        st.info("Pastikan kolom pada file Excel Anda berurutan: **id_ustad, nama, bidang_pengajaran, no_hp**")
+        
+        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx) atau CSV untuk Ustad", type=["xlsx", "csv"], key="upload_ustad")
+        
+        if uploaded_file_ustad is not None:
+            try:
+                # Membaca file menggunakan pandas
+                if uploaded_file_ustad.name.endswith('.csv'):
+                    df_upload_ustad = pd.read_csv(uploaded_file_ustad)
+                else:
+                    df_upload_ustad = pd.read_excel(uploaded_file_ustad)
+                
+                st.write("Pratinjau Data Ustad yang akan diimpor:", df_upload_ustad.head())
+                
+                if st.button("Proses dan Masukkan ke Database Ustad"):
+                    conn = sqlite3.connect(DB_NAME)
+                    df_upload_ustad.to_sql('ustad', conn, if_exists='append', index=False)
+                    conn.close()
+                    st.success("✅ Data ustad berhasil diimpor secara massal!")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat membaca file: {e}")
+
+    st.subheader("Daftar Ustad Aktif")
     st.dataframe(load_data("ustad"), use_container_width=True)
 
 # 4. DATA SANTRI
 elif menu == "Data Santri":
     st.header("👦👧 Manajemen Data Santri")
-    with st.form("form_santri", clear_on_submit=True):
-        nis = st.text_input("NIS (Nomor Induk Santri)")
-        nama = st.text_input("Nama Lengkap Santri")
-        kelas = st.text_input("Kelas / Jenjang")
-        kamar = st.text_input("Kamar Asrama")
-        wali = st.text_input("Nama Wali Santri")
-        if st.form_submit_button("Simpan Data Santri"):
-            if nis and nama:
-                try:
-                    run_query("INSERT INTO santri VALUES (?, ?, ?, ?, ?)", (nis, nama, kelas, kamar, wali))
-                    st.success(f"Data santri **{nama}** berhasil disimpan!")
-                except sqlite3.IntegrityError:
-                    st.error(f"NIS '{nis}' sudah terdaftar.")
-            else:
-                st.warning("NIS dan Nama wajib diisi.")
+    
+    # Tab pilihan: Input Manual atau Impor Excel
+    tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
+    
+    with tab1:
+        with st.form("form_santri", clear_on_submit=True):
+            nis = st.text_input("NIS (Nomor Induk Santri)")
+            nama = st.text_input("Nama Lengkap Santri")
+            kelas = st.text_input("Kelas / Jenjang")
+            kamar = st.text_input("Kamar Asrama")
+            wali = st.text_input("Nama Wali Santri")
+            if st.form_submit_button("Simpan Data Santri"):
+                if nis and nama:
+                    try:
+                        run_query("INSERT INTO santri VALUES (?, ?, ?, ?, ?)", (nis, nama, kelas, kamar, wali))
+                        st.success(f"Data santri **{nama}** berhasil disimpan!")
+                    except sqlite3.IntegrityError:
+                        st.error(f"NIS '{nis}' sudah terdaftar.")
+                else:
+                    st.warning("NIS dan Nama wajib diisi.")
+
+    with tab2:
+        st.subheader("Unggah Data Santri Masal via Excel/CSV")
+        st.info("Pastikan kolom pada file Excel Anda berurutan: **nis, nama, kelas, kamar, wali_santri**")
+        
+        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) atau CSV", type=["xlsx", "csv"])
+        
+        if uploaded_file is not None:
+            try:
+                # Membaca file menggunakan pandas
+                if uploaded_file.name.endswith('.csv'):
+                    df_upload = pd.read_csv(uploaded_file)
+                else:
+                    df_upload = pd.read_excel(uploaded_file)
+                
+                st.write("Pratinjau Data yang akan diimpor:", df_upload.head())
+                
+                if st.button("Proses dan Masukkan ke Database"):
+                    conn = sqlite3.connect(DB_NAME)
+                    # Masukkan data ke tabel santri secara otomatis (jika NIS sama, akan diabaikan/di-replace)
+                    df_upload.to_sql('santri', conn, if_exists='append', index=False)
+                    conn.close()
+                    st.success("✅ Data santri berhasil diimpor secara massal!")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Terjadi kesalahan saat membaca file: {e}")
 
     st.subheader("Daftar Santri Aktif")
     st.dataframe(load_data("santri"), use_container_width=True)
