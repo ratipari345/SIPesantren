@@ -45,6 +45,15 @@ def init_db():
             jumlah INTEGER
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS satuan_pendidikan (
+            npsn TEXT PRIMARY KEY,
+            nama_satuan TEXT NOT NULL,
+            jenjang TEXT,
+            status TEXT,
+            kepala_sekolah TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -67,8 +76,14 @@ def load_data(table_name):
 st.set_page_config(page_title="SIM Pondok Pesantren", page_icon="🏫", layout="wide")
 
 st.sidebar.title("🏫 SIM Pesantren")
-menu = st.sidebar.selectbox("Pilih Menu", ["Dashboard", "Profil Pesantren", "Data Ustad", "Data Santri", "Data Sarpras"])
-
+menu = st.sidebar.selectbox("Pilih Menu", [
+    "Dashboard", 
+    "Profil Pesantren", 
+    "Satuan Pendidikan", 
+    "Data Ustad", 
+    "Data Santri", 
+    "Data Sarpras"
+])
 # 1. DASHBOARD
 # 1. DASHBOARD
 if menu == "Dashboard":
@@ -146,9 +161,82 @@ elif menu == "Profil Pesantren":
             st.markdown(f"**SK Ijin Operasional:**\n{p['sk_ijin'] if p['sk_ijin'] else '-'}")
     else:
         st.info("ℹ️ Belum ada data profil yang dimasukkan. Silakan isi form di atas.")
+        # 3. SATUAN PENDIDIKAN
+elif menu == "Satuan Pendidikan":
+    st.header("🏫 Manajemen Satuan Pendidikan / Unit Sekolah")
+    st.info("Gunakan menu ini untuk mendaftarkan unit pendidikan yang berada di bawah naungan pondok pesantren (Contoh: MTs Darul Huda, MA Darul Huda, TPQ, dll).")
 
-# 3. DATA USTAD
-# 3. DATA USTAD
+    # Tab pilihan: Input Manual atau Impor Excel
+    tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
+
+    with tab1:
+        with st.form("form_satuan", clear_on_submit=True):
+            npsn = st.text_input("NPSN / Nomor Induk Satuan (Kosongkan jika non-formal)")
+            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: MTs Pesantren)")
+            jenjang = st.selectbox("Jenjang Pendidikan", ["RA / TK", "MI / SD", "MTs / SMP", "MA / SMA / SMK", "Madrasah Diniyah", "TPQ / TKA", "Lainnya"])
+            status = st.selectbox("Status Lembaga", ["Swasta", "Negeri"])
+            kepala_sekolah = st.text_input("Nama Kepala / Pimpinan Unit")
+            
+            if st.form_submit_button("Simpan Satuan Pendidikan"):
+                if nama_satuan:
+                    # Jika NPSN kosong, berikan kode unik otomatis
+                    if not npsn:
+                        import time
+                        npsn = f"NON-{int(time.time())}"
+                    try:
+                        run_query("INSERT INTO satuan_pendidikan VALUES (?, ?, ?, ?, ?)", 
+                                  (npsn, nama_satuan, jenjang, status, kepala_sekolah))
+                        st.success(f"Satuan pendidikan **{nama_satuan}** berhasil disimpan!")
+                        st.rerun()
+                    except sqlite3.IntegrityError:
+                        st.error(f"NPSN '{npsn}' sudah terdaftar.")
+                else:
+                    st.warning("Nama Satuan Pendidikan wajib diisi.")
+
+    with tab2:
+        st.subheader("Unggah Data Satuan Pendidikan via Excel")
+        
+        # Template download untuk satuan pendidikan
+        df_template_satuan = pd.DataFrame(columns=["npsn", "nama_satuan", "jenjang", "status", "kepala_sekolah"])
+        output_satuan = io.BytesIO()
+        with pd.ExcelWriter(output_satuan, engine='xlsxwriter') as writer:
+            df_template_satuan.to_excel(writer, sheet_name='Satuan Pendidikan', index=False)
+        processed_data_satuan = output_satuan.getvalue()
+        
+        st.download_button(
+            label="📥 Unduh Template Excel Satuan Pendidikan",
+            data=processed_data_satuan,
+            file_name="template_satuan_pendidikan.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        st.divider()
+        uploaded_file_satuan = st.file_uploader("Pilih file Excel (.xlsx)", type=["xlsx", "csv"], key="up_satuan")
+        
+        if uploaded_file_satuan is not None:
+            try:
+                if uploaded_file_satuan.name.endswith('.csv'):
+                    df_upload_satuan = pd.read_csv(uploaded_file_satuan)
+                else:
+                    df_upload_satuan = pd.read_excel(uploaded_file_satuan)
+                
+                st.write("Pratinjau Data:", df_upload_satuan.head())
+                
+                if st.button("Proses Impor Satuan Pendidikan"):
+                    conn = sqlite3.connect(DB_NAME)
+                    df_upload_satuan.to_sql('satuan_pendidikan', conn, if_exists='append', index=False)
+                    conn.close()
+                    st.success("✅ Data satuan pendidikan berhasil diimpor!")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Terjadi kesalahan: {e}")
+
+    st.divider()
+    st.subheader("📋 Daftar Unit Satuan Pendidikan di Pesantren")
+    df_satuan = load_data("satuan_pendidikan")
+    st.dataframe(df_satuan, use_container_width=True)
+
+# 4. DATA USTAD
 elif menu == "Data Ustad":
     st.header("👨‍🏫 Manajemen Data Ustad / Pengajar")
     
@@ -199,7 +287,7 @@ elif menu == "Data Ustad":
     st.subheader("Daftar Ustad Aktif")
     st.dataframe(load_data("ustad"), use_container_width=True)
 
-# 4. DATA SANTRI
+# 5. DATA SANTRI
 elif menu == "Data Santri":
     st.header("👦👧 Manajemen Data Santri")
     
@@ -252,7 +340,7 @@ elif menu == "Data Santri":
     st.subheader("Daftar Santri Aktif")
     st.dataframe(load_data("santri"), use_container_width=True)
 
-# 5. DATA SARPRAS
+# 6. DATA SARPRAS
 elif menu == "Data Sarpras":
     st.header("🏢 Manajemen Sarana & Prasarana")
     with st.form("form_sarpras", clear_on_submit=True):
