@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 import sqlite3
+import io
 
 # --- KONFIGURASI DATABASE ---
-# Jika dijalankan di Streamlit Cloud, database akan tersimpan secara lokal di server Streamlit
 DB_NAME = "pesantren.db"
 
 def init_db():
@@ -18,6 +18,15 @@ def init_db():
             pengasuh TEXT,
             akta_notaris TEXT,
             sk_ijin TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS satuan_pendidikan (
+            npsn TEXT PRIMARY KEY,
+            nama_satuan TEXT NOT NULL,
+            jenjang TEXT,
+            status TEXT,
+            kepala_sekolah TEXT
         )
     ''')
     cursor.execute('''
@@ -43,15 +52,6 @@ def init_db():
             nama_barang TEXT NOT NULL,
             kondisi TEXT,
             jumlah INTEGER
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS satuan_pendidikan (
-            npsn TEXT PRIMARY KEY,
-            nama_satuan TEXT NOT NULL,
-            jenjang TEXT,
-            status TEXT,
-            kepala_sekolah TEXT
         )
     ''')
     conn.commit()
@@ -84,32 +84,32 @@ menu = st.sidebar.selectbox("Pilih Menu", [
     "Data Santri", 
     "Data Sarpras"
 ])
-# 1. DASHBOARD
+
 # 1. DASHBOARD
 if menu == "Dashboard":
-    # Ambil nama pesantren terbaru dari database profil
     conn = sqlite3.connect(DB_NAME)
     df_profil = pd.read_sql_query("SELECT nama_pp FROM profil_pesantren ORDER BY id DESC LIMIT 1", conn)
     conn.close()
     
-    # Tentukan nama pesantren (jika belum diisi, tampilkan nama default)
     nama_pesantren = df_profil['nama_pp'].values[0] if not df_profil.empty else "Pondok Pesantren"
     
-    # Header Dashboard dengan Nama Lembaga
     st.header(f"📊 Dashboard Rekapitulasi")
     st.subheader(f"🏫 {nama_pesantren}")
     st.divider()
 
+    df_satuan = load_data("satuan_pendidikan")
     df_ustad = load_data("ustad")
     df_santri = load_data("santri")
     df_sarpras = load_data("sarpras")
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Ustad", len(df_ustad))
-    col2.metric("Total Santri", len(df_santri))
-    col3.metric("Total Sarpras", len(df_sarpras))
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Satuan Pendidikan", len(df_satuan))
+    col2.metric("Total Ustad", len(df_ustad))
+    col3.metric("Total Santri", len(df_santri))
+    col4.metric("Total Sarpras", len(df_sarpras))
 
     st.success("✅ Aplikasi siap digunakan dan data tersimpan dengan aman!")
+
 # 2. PROFIL PESANTREN
 elif menu == "Profil Pesantren":
     st.header("🏫 Profil & Legalitas Pondok Pesantren")
@@ -161,25 +161,23 @@ elif menu == "Profil Pesantren":
             st.markdown(f"**SK Ijin Operasional:**\n{p['sk_ijin'] if p['sk_ijin'] else '-'}")
     else:
         st.info("ℹ️ Belum ada data profil yang dimasukkan. Silakan isi form di atas.")
-        # 3. SATUAN PENDIDIKAN
+
+# 3. SATUAN PENDIDIKAN
 elif menu == "Satuan Pendidikan":
     st.header("🏫 Manajemen Satuan Pendidikan / Unit Sekolah")
-    st.info("Gunakan menu ini untuk mendaftarkan unit pendidikan yang berada di bawah naungan pondok pesantren (Contoh: MTs Darul Huda, MA Darul Huda, TPQ, dll).")
-
-    # Tab pilihan: Input Manual atau Impor Excel
+    
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
 
     with tab1:
         with st.form("form_satuan", clear_on_submit=True):
             npsn = st.text_input("NPSN / Nomor Induk Satuan (Kosongkan jika non-formal)")
-            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: MTs Pesantren)")
+            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: MTs Darul Huda)")
             jenjang = st.selectbox("Jenjang Pendidikan", ["RA / TK", "MI / SD", "MTs / SMP", "MA / SMA / SMK", "Madrasah Diniyah", "TPQ / TKA", "Lainnya"])
             status = st.selectbox("Status Lembaga", ["Swasta", "Negeri"])
             kepala_sekolah = st.text_input("Nama Kepala / Pimpinan Unit")
             
             if st.form_submit_button("Simpan Satuan Pendidikan"):
                 if nama_satuan:
-                    # Jika NPSN kosong, berikan kode unik otomatis
                     if not npsn:
                         import time
                         npsn = f"NON-{int(time.time())}"
@@ -195,8 +193,6 @@ elif menu == "Satuan Pendidikan":
 
     with tab2:
         st.subheader("Unggah Data Satuan Pendidikan via Excel")
-        
-        # Template download untuk satuan pendidikan
         df_template_satuan = pd.DataFrame(columns=["npsn", "nama_satuan", "jenjang", "status", "kepala_sekolah"])
         output_satuan = io.BytesIO()
         with pd.ExcelWriter(output_satuan, engine='xlsxwriter') as writer:
@@ -233,14 +229,12 @@ elif menu == "Satuan Pendidikan":
 
     st.divider()
     st.subheader("📋 Daftar Unit Satuan Pendidikan di Pesantren")
-    df_satuan = load_data("satuan_pendidikan")
-    st.dataframe(df_satuan, use_container_width=True)
+    st.dataframe(load_data("satuan_pendidikan"), use_container_width=True)
 
 # 4. DATA USTAD
 elif menu == "Data Ustad":
     st.header("👨‍🏫 Manajemen Data Ustad / Pengajar")
     
-    # Tab pilihan: Input Manual atau Impor Excel
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
     
     with tab1:
@@ -260,29 +254,40 @@ elif menu == "Data Ustad":
                     st.warning("ID dan Nama wajib diisi.")
 
     with tab2:
-        st.subheader("Unggah Data Ustad Masal via Excel/CSV")
-        st.info("Pastikan kolom pada file Excel Anda berurutan: **id_ustad, nama, bidang_pengajaran, no_hp**")
+        st.subheader("Unggah Data Ustad Masal via Excel")
+        df_template_ustad = pd.DataFrame(columns=["id_ustad", "nama", "bidang_pengajaran", "no_hp"])
+        output_ustad = io.BytesIO()
+        with pd.ExcelWriter(output_ustad, engine='xlsxwriter') as writer:
+            df_template_ustad.to_excel(writer, sheet_name='Data Ustad', index=False)
+        processed_data_ustad = output_ustad.getvalue()
         
-        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx) atau CSV untuk Ustad", type=["xlsx", "csv"], key="upload_ustad")
+        st.download_button(
+            label="📥 Unduh Template Excel Ustad",
+            data=processed_data_ustad,
+            file_name="template_data_ustad.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        st.divider()
+        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx) data ustad", type=["xlsx", "csv"], key="up_ustad")
         
         if uploaded_file_ustad is not None:
             try:
-                # Membaca file menggunakan pandas
                 if uploaded_file_ustad.name.endswith('.csv'):
                     df_upload_ustad = pd.read_csv(uploaded_file_ustad)
                 else:
                     df_upload_ustad = pd.read_excel(uploaded_file_ustad)
                 
-                st.write("Pratinjau Data Ustad yang akan diimpor:", df_upload_ustad.head())
+                st.write("Pratinjau Data Ustad:", df_upload_ustad.head())
                 
-                if st.button("Proses dan Masukkan ke Database Ustad"):
+                if st.button("Proses Impor Ustad"):
                     conn = sqlite3.connect(DB_NAME)
                     df_upload_ustad.to_sql('ustad', conn, if_exists='append', index=False)
                     conn.close()
-                    st.success("✅ Data ustad berhasil diimpor secara massal!")
+                    st.success("✅ Data ustad berhasil diimpor!")
                     st.rerun()
             except Exception as e:
-                st.error(f"Terjadi kesalahan saat membaca file: {e}")
+                st.error(f"Terjadi kesalahan: {e}")
 
     st.subheader("Daftar Ustad Aktif")
     st.dataframe(load_data("ustad"), use_container_width=True)
@@ -291,7 +296,6 @@ elif menu == "Data Ustad":
 elif menu == "Data Santri":
     st.header("👦👧 Manajemen Data Santri")
     
-    # Tab pilihan: Input Manual atau Impor Excel
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
     
     with tab1:
@@ -312,30 +316,40 @@ elif menu == "Data Santri":
                     st.warning("NIS dan Nama wajib diisi.")
 
     with tab2:
-        st.subheader("Unggah Data Santri Masal via Excel/CSV")
-        st.info("Pastikan kolom pada file Excel Anda berurutan: **nis, nama, kelas, kamar, wali_santri**")
+        st.subheader("Unggah Data Santri Masal via Excel")
+        df_template_santri = pd.DataFrame(columns=["nis", "nama", "kelas", "kamar", "wali_santri"])
+        output_santri = io.BytesIO()
+        with pd.ExcelWriter(output_santri, engine='xlsxwriter') as writer:
+            df_template_santri.to_excel(writer, sheet_name='Data Santri', index=False)
+        processed_data_santri = output_santri.getvalue()
         
-        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) atau CSV", type=["xlsx", "csv"])
+        st.download_button(
+            label="📥 Unduh Template Excel Santri",
+            data=processed_data_santri,
+            file_name="template_data_santri.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        
+        st.divider()
+        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) data santri", type=["xlsx", "csv"], key="up_santri")
         
         if uploaded_file is not None:
             try:
-                # Membaca file menggunakan pandas
                 if uploaded_file.name.endswith('.csv'):
                     df_upload = pd.read_csv(uploaded_file)
                 else:
                     df_upload = pd.read_excel(uploaded_file)
                 
-                st.write("Pratinjau Data yang akan diimpor:", df_upload.head())
+                st.write("Pratinjau Data Santri:", df_upload.head())
                 
-                if st.button("Proses dan Masukkan ke Database"):
+                if st.button("Proses Impor Santri"):
                     conn = sqlite3.connect(DB_NAME)
-                    # Masukkan data ke tabel santri secara otomatis (jika NIS sama, akan diabaikan/di-replace)
                     df_upload.to_sql('santri', conn, if_exists='append', index=False)
                     conn.close()
-                    st.success("✅ Data santri berhasil diimpor secara massal!")
+                    st.success("✅ Data santri berhasil diimpor!")
                     st.rerun()
             except Exception as e:
-                st.error(f"Terjadi kesalahan saat membaca file: {e}")
+                st.error(f"Terjadi kesalahan: {e}")
 
     st.subheader("Daftar Santri Aktif")
     st.dataframe(load_data("santri"), use_container_width=True)
