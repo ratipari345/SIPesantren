@@ -70,8 +70,21 @@ st.sidebar.title("🏫 SIM Pesantren")
 menu = st.sidebar.selectbox("Pilih Menu", ["Dashboard", "Profil Pesantren", "Data Ustad", "Data Santri", "Data Sarpras"])
 
 # 1. DASHBOARD
+# 1. DASHBOARD
 if menu == "Dashboard":
-    st.header("📊 Dashboard Rekapitulasi Pondok Pesantren")
+    # Ambil nama pesantren terbaru dari database profil
+    conn = sqlite3.connect(DB_NAME)
+    df_profil = pd.read_sql_query("SELECT nama_pp FROM profil_pesantren ORDER BY id DESC LIMIT 1", conn)
+    conn.close()
+    
+    # Tentukan nama pesantren (jika belum diisi, tampilkan nama default)
+    nama_pesantren = df_profil['nama_pp'].values[0] if not df_profil.empty else "Pondok Pesantren"
+    
+    # Header Dashboard dengan Nama Lembaga
+    st.header(f"📊 Dashboard Rekapitulasi")
+    st.subheader(f"🏫 {nama_pesantren}")
+    st.divider()
+
     df_ustad = load_data("ustad")
     df_santri = load_data("santri")
     df_sarpras = load_data("sarpras")
@@ -81,8 +94,7 @@ if menu == "Dashboard":
     col2.metric("Total Santri", len(df_santri))
     col3.metric("Total Sarpras", len(df_sarpras))
 
-    st.success("✅ Aplikasi siap digunakan!")
-
+    st.success("✅ Aplikasi siap digunakan dan data tersimpan dengan aman!")
 # 2. PROFIL PESANTREN
 elif menu == "Profil Pesantren":
     st.header("🏫 Profil & Legalitas Pondok Pesantren")
