@@ -196,7 +196,7 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* Membuat latar belakang kotak input / textarea menjadi ABU-ABU dengan teks hitam */
+    /* Membuat latar belakang SEMUA kotak input, textarea, selectbox, dan number input menjadi ABU-ABU terang dengan teks hitam */
     .stTextInput input, .stTextArea textarea, .stSelectbox select, .stNumberInput input {
         color: #000000 !important;
         background-color: #e2e8f0 !important;
