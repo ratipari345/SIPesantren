@@ -1,8 +1,3 @@
-Baik, istilah Warga Belajar kita kembalikan sepenuhnya menjadi Santri agar tetap selaras dengan identitas khas lembaga.
-
-Berikut adalah kode lengkap app.py terbaru di mana istilah untuk peserta didik menggunakan Santri, namun konteks utamanya tetap untuk Lembaga Pendidikan Keagamaan Islam:
-
-Python
 import streamlit as st
 import pandas as pd
 import sqlite3
