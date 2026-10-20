@@ -301,7 +301,7 @@ elif menu == "Satuan Pendidikan":
 # 4. DATA USTAD
 elif menu == "Data Ustad":
     st.header("👨‍🏫 Manajemen Data Ustad / Pengajar")
-    tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
+    tab1, tab2, tab3 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel", "✏️ Edit / Hapus Data"])
     
     with tab1:
         with st.form("form_ustad", clear_on_submit=True):
@@ -327,7 +327,7 @@ elif menu == "Data Ustad":
         st.download_button("📥 Unduh Template Excel", data=output_ustad.getvalue(), file_name="template_data_ustad.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
-        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx)", type=["xlsx"], key="up_ustad")
+        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx) data ustad", type=["xlsx"], key="up_ustad")
         if uploaded_file_ustad is not None:
             try:
                 df_upload_ustad = pd.read_excel(uploaded_file_ustad, engine='openpyxl')
@@ -340,26 +340,42 @@ elif menu == "Data Ustad":
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
 
+    with tab3:
+        st.subheader("Pilih Ustad yang Ingin Diedit atau Dihapus")
+        df_ustad_s = load_data("ustad")
+        if not df_ustad_s.empty:
+            pilih_ustad = st.selectbox("Pilih ID & Nama Ustad", options=df_ustad_s['id_ustad'].tolist(), format_func=lambda x: f"{x} - {df_ustad_s.loc[df_ustad_s['id_ustad'] == x, 'nama'].values[0]}")
+            
+            data_terpilih = df_ustad_s[df_ustad_s['id_ustad'] == pilih_ustad].iloc[0]
+            
+            with st.form("form_edit_ustad"):
+                new_nama = st.text_input("Nama Lengkap & Gelar", value=data_terpilih['nama'])
+                new_bidang = st.text_input("Bidang Pengajaran", value=data_terpilih['bidang_pengajaran'])
+                new_hp = st.text_input("No. HP / WhatsApp", value=data_terpilih['no_hp'])
+                
+                col_e1, col_e2 = st.columns(2)
+                update_btn = col_e1.form_submit_button("💾 Perbarui Data")
+                delete_btn = col_e2.form_submit_button("🗑️ Hapus Data", type="primary")
+                
+                if update_btn:
+                    run_query("UPDATE ustad SET nama = ?, bidang_pengajaran = ?, no_hp = ? WHERE id_ustad = ?", (new_nama, new_bidang, new_hp, pilih_ustad))
+                    st.success("✅ Data ustad berhasil diperbarui!")
+                    st.rerun()
+                elif delete_btn:
+                    run_query("DELETE FROM ustad WHERE id_ustad = ?", (pilih_ustad,))
+                    st.success("🗑️ Data ustad berhasil dihapus!")
+                    st.rerun()
+        else:
+            st.info("Belum ada data ustad.")
+
     st.divider()
-    st.subheader("🔍 Cari & Hapus Data Ustad")
-    df_ustad_s = load_data("ustad")
-    if not df_ustad_s.empty:
-        keyword_ustad = st.text_input("Cari berdasarkan Nama atau ID Ustad")
-        if keyword_ustad:
-            df_ustad_s = df_ustad_s[df_ustad_s['nama'].str.contains(keyword_ustad, case=False, na=False) | df_ustad_s['id_ustad'].str.contains(keyword_ustad, case=False, na=False)]
-        st.dataframe(df_ustad_s, use_container_width=True)
-        
-        with st.form("form_hapus_ustad"):
-            id_hapus = st.selectbox("Pilih ID Ustad yang akan dihapus", options=df_ustad_s['id_ustad'].tolist())
-            if st.form_submit_button("Hapus Ustad Pilihan", type="primary"):
-                run_query("DELETE FROM ustad WHERE id_ustad = ?", (id_hapus,))
-                st.success("Data ustad berhasil dihapus!")
-                st.rerun()
+    st.subheader("Daftar Ustad Aktif")
+    st.dataframe(load_data("ustad"), use_container_width=True)
 
 # 5. DATA SANTRI
 elif menu == "Data Santri":
     st.header("👦👧 Manajemen Data Santri")
-    tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
+    tab1, tab2, tab3 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel", "✏️ Edit / Hapus Data"])
     
     with tab1:
         with st.form("form_santri", clear_on_submit=True):
@@ -375,81 +391,4 @@ elif menu == "Data Santri":
                         st.success(f"Data santri **{nama}** berhasil disimpan!")
                         st.rerun()
                     except sqlite3.IntegrityError:
-                        st.error(f"NIS '{nis}' sudah terdaftar.")
-
-    with tab2:
-        st.subheader("Unggah Data Santri Masal via Excel (.xlsx)")
-        df_template_santri = pd.DataFrame(columns=["nis", "nama", "kelas", "kamar", "wali_santri"])
-        output_santri = io.BytesIO()
-        with pd.ExcelWriter(output_santri, engine='openpyxl') as writer:
-            df_template_santri.to_excel(writer, sheet_name='Data Santri', index=False)
-        st.download_button("📥 Unduh Template Excel", data=output_santri.getvalue(), file_name="template_data_santri.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        
-        st.divider()
-        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx)", type=["xlsx"], key="up_santri")
-        if uploaded_file is not None:
-            try:
-                df_upload = pd.read_excel(uploaded_file, engine='openpyxl')
-                if st.button("Proses Impor Santri"):
-                    conn = sqlite3.connect(DB_NAME)
-                    df_upload.to_sql('santri', conn, if_exists='append', index=False)
-                    conn.close()
-                    st.success("✅ Data santri berhasil diimpor!")
-                    st.rerun()
-            except Exception as e:
-                st.error(f"Terjadi kesalahan: {e}")
-
-    st.divider()
-    st.subheader("🔍 Cari & Hapus Data Santri")
-    df_santri_s = load_data("santri")
-    if not df_santri_s.empty:
-        keyword = st.text_input("Cari berdasarkan Nama atau NIS Santri")
-        if keyword:
-            df_santri_s = df_santri_s[df_santri_s['nama'].str.contains(keyword, case=False, na=False) | df_santri_s['nis'].str.contains(keyword, case=False, na=False)]
-        st.dataframe(df_santri_s, use_container_width=True)
-        
-        with st.form("form_hapus_santri"):
-            nis_hapus = st.selectbox("Pilih NIS Santri yang akan dihapus", options=df_santri_s['nis'].tolist())
-            if st.form_submit_button("Hapus Santri Pilihan", type="primary"):
-                run_query("DELETE FROM santri WHERE nis = ?", (nis_hapus,))
-                st.success("Data santri berhasil dihapus!")
-                st.rerun()
-
-# 6. DATA SARPRAS
-elif menu == "Data Sarpras":
-    st.header("🏢 Manajemen Sarana & Prasarana")
-    with st.form("form_sarpras", clear_on_submit=True):
-        kode = st.text_input("Kode Barang")
-        nama_brg = st.text_input("Nama Barang")
-        kondisi = st.selectbox("Kondisi", ["Baik", "Rusak Ringan", "Rusak Berat"])
-        jumlah = st.number_input("Jumlah Unit", min_value=1, step=1)
-        if st.form_submit_button("Simpan Data Sarpras"):
-            if kode and nama_brg:
-                try:
-                    run_query("INSERT INTO sarpras VALUES (?, ?, ?, ?)", (kode, nama_brg, kondisi, int(jumlah)))
-                    st.success(f"Data sarpras **{nama_brg}** berhasil disimpan!")
-                    st.rerun()
-                except sqlite3.IntegrityError:
-                    st.error(f"Kode Barang '{kode}' sudah terdaftar.")
-
-    st.subheader("Daftar Inventaris Sarpras")
-    st.dataframe(load_data("sarpras"), use_container_width=True)
-
-# 7. CETAK PORTOFOLIO WORD
-elif menu == "📄 Cetak Portofolio Word":
-    st.header("📄 Cetak Portofolio Lembaga (.docx)")
-    st.write("Unduh rangkuman seluruh data pesantren per lembaga dalam bentuk dokumen Word yang rapi dan siap dicetak.")
-    st.divider()
-    
-    df_profil = load_data("profil_pesantren")
-    nama_pp = df_profil['nama_pp'].values[0] if not df_profil.empty else "Pesantren"
-    
-    doc_file = generate_word_portfolio()
-    
-    st.download_button(
-        label="📥 Download Portofolio Word (.docx)",
-        data=doc_file,
-        file_name=f"Portofolio_{nama_pp.replace(' ', '_')}.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        type="primary"
-    )
+                        st.error(f"
