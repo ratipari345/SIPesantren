@@ -1,3 +1,8 @@
+Baik, istilah Warga Belajar kita kembalikan sepenuhnya menjadi Santri agar tetap selaras dengan identitas khas lembaga.
+
+Berikut adalah kode lengkap app.py terbaru di mana istilah untuk peserta didik menggunakan Santri, namun konteks utamanya tetap untuk Lembaga Pendidikan Keagamaan Islam:
+
+Python
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -47,7 +52,7 @@ def init_db():
         )
     ''')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS warga_belajar (
+        CREATE TABLE IF NOT EXISTS santri (
             nis TEXT PRIMARY KEY,
             nama TEXT NOT NULL,
             kelas TEXT,
@@ -119,7 +124,7 @@ def generate_word_portfolio():
         doc.add_paragraph("Belum ada data profil lembaga.")
 
     # 2. Satuan Pendidikan
-    doc.add_heading("2. Satuan Pendidikan / Unit Sekolah", level=1)
+    doc.add_heading("2. Satuan Pendidikan / Unit Keagamaan", level=1)
     df_satuan = load_data("satuan_pendidikan")
     if not df_satuan.empty:
         table = doc.add_table(rows=1, cols=5)
@@ -146,20 +151,20 @@ def generate_word_portfolio():
     else:
         doc.add_paragraph("Belum ada data pengajar.")
 
-    # 4. Warga Belajar / Santri/Siswa
-    doc.add_heading("4. Data Warga Belajar / Santri / Siswa", level=1)
-    df_warga = load_data("warga_belajar")
-    if not df_warga.empty:
-        doc.add_paragraph(f"Total Warga Belajar Terdaftar: {len(df_warga)} Orang")
+    # 4. Santri
+    doc.add_heading("4. Data Santri", level=1)
+    df_santri = load_data("santri")
+    if not df_santri.empty:
+        doc.add_paragraph(f"Total Santri Terdaftar: {len(df_santri)} Orang")
         table = doc.add_table(rows=1, cols=5)
         table.style = 'Table Grid'
         hdr = table.rows[0].cells
-        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NIS', 'Nama Warga Belajar', 'Kelas', 'Kamar/Asrama', 'Wali Murid'
-        for _, row in df_warga.iterrows():
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NIS', 'Nama Santri', 'Kelas', 'Kamar/Asrama', 'Wali Murid'
+        for _, row in df_santri.iterrows():
             r = table.add_row().cells
             r[0].text, r[1].text, r[2].text, r[3].text, r[4].text = str(row['nis']), str(row['nama']), str(row['kelas']), str(row['asrama_kamar']), str(row['wali_murid'])
     else:
-        doc.add_paragraph("Belum ada data warga belajar.")
+        doc.add_paragraph("Belum ada data santri.")
 
     # 5. Sarpras
     doc.add_heading("5. Inventaris Sarana & Prasarana", level=1)
@@ -246,7 +251,7 @@ menu = st.sidebar.selectbox("Pilih Menu", [
     "Profil Lembaga", 
     "Satuan Pendidikan", 
     "Data Pengajar", 
-    "Data Warga Belajar", 
+    "Data Santri", 
     "Data Sarpras",
     "📸 Galeri & Dokumentasi",
     "📄 Cetak Portofolio Word"
@@ -266,13 +271,13 @@ if menu == "Dashboard":
 
     df_satuan = load_data("satuan_pendidikan")
     df_pengajar = load_data("pengajar")
-    df_warga = load_data("warga_belajar")
+    df_santri = load_data("santri")
     df_sarpras = load_data("sarpras")
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Satuan Pendidikan", len(df_satuan))
     col2.metric("Total Pengajar", len(df_pengajar))
-    col3.metric("Total Warga Belajar", len(df_warga))
+    col3.metric("Total Santri", len(df_santri))
     col4.metric("Total Sarpras", len(df_sarpras))
 
     st.success("✅ Aplikasi siap digunakan dan data tersimpan dengan aman!")
@@ -448,81 +453,81 @@ elif menu == "Data Pengajar":
     st.subheader("Daftar Pengajar Aktif")
     st.dataframe(load_data("pengajar"), use_container_width=True)
 
-# 5. DATA WARGA BELAJAR
-elif menu == "Data Warga Belajar":
-    st.header("📚 Manajemen Data Warga Belajar / Santri / Siswa")
+# 5. DATA SANTRI
+elif menu == "Data Santri":
+    st.header("👦👧 Manajemen Data Santri")
     tab1, tab2, tab3 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel", "✏️ Edit / Hapus Data"])
     
     with tab1:
-        with st.form("form_warga", clear_on_submit=True):
+        with st.form("form_santri", clear_on_submit=True):
             nis = st.text_input("NIS / Nomor Induk")
             nama = st.text_input("Nama Lengkap")
             kelas = st.text_input("Kelas / Tingkat")
             asrama_kamar = st.text_input("Kamar / Asrama (Opsional)")
             wali = st.text_input("Nama Orang Tua / Wali")
-            if st.form_submit_button("Simpan Data Warga Belajar"):
+            if st.form_submit_button("Simpan Data Santri"):
                 if nis and nama:
                     try:
-                        run_query("INSERT INTO warga_belajar VALUES (?, ?, ?, ?, ?)", (nis, nama, kelas, asrama_kamar, wali))
-                        st.success(f"Data warga belajar **{nama}** berhasil disimpan!")
+                        run_query("INSERT INTO santri VALUES (?, ?, ?, ?, ?)", (nis, nama, kelas, asrama_kamar, wali))
+                        st.success(f"Data santri **{nama}** berhasil disimpan!")
                         st.rerun()
                     except sqlite3.IntegrityError:
                         st.error(f"NIS '{nis}' sudah terdaftar.")
 
     with tab2:
-        st.subheader("Unggah Data Warga Belajar Masal via Excel (.xlsx)")
-        df_template_warga = pd.DataFrame(columns=["nis", "nama", "kelas", "asrama_kamar", "wali_murid"])
-        output_warga = io.BytesIO()
-        with pd.ExcelWriter(output_warga, engine='openpyxl') as writer:
-            df_template_warga.to_excel(writer, sheet_name='Data Warga Belajar', index=False)
-        st.download_button("📥 Unduh Template Excel", data=output_warga.getvalue(), file_name="template_data_warga_belajar.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.subheader("Unggah Data Santri Masal via Excel (.xlsx)")
+        df_template_santri = pd.DataFrame(columns=["nis", "nama", "kelas", "asrama_kamar", "wali_murid"])
+        output_santri = io.BytesIO()
+        with pd.ExcelWriter(output_santri, engine='openpyxl') as writer:
+            df_template_santri.to_excel(writer, sheet_name='Data Santri', index=False)
+        st.download_button("📥 Unduh Template Excel", data=output_santri.getvalue(), file_name="template_data_santri.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
-        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) data warga belajar", type=["xlsx"], key="up_warga")
+        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) data santri", type=["xlsx"], key="up_santri")
         if uploaded_file is not None:
             try:
                 df_upload = pd.read_excel(uploaded_file, engine='openpyxl')
-                if st.button("Proses Impor Warga Belajar"):
+                if st.button("Proses Impor Santri"):
                     conn = sqlite3.connect(DB_NAME)
-                    df_upload.to_sql('warga_belajar', conn, if_exists='append', index=False)
+                    df_upload.to_sql('santri', conn, if_exists='append', index=False)
                     conn.close()
-                    st.success("✅ Data warga belajar berhasil diimpor!")
+                    st.success("✅ Data santri berhasil diimpor!")
                     st.rerun()
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
 
     with tab3:
-        st.subheader("Pilih Warga Belajar yang Ingin Diedit atau Dihapus")
-        df_warga_s = load_data("warga_belajar")
-        if not df_warga_s.empty:
-            pilih_warga = st.selectbox("Pilih NIS & Nama", options=df_warga_s['nis'].tolist(), format_func=lambda x: f"{x} - {df_warga_s.loc[df_warga_s['nis'] == x, 'nama'].values[0]}")
+        st.subheader("Pilih Santri yang Ingin Diedit atau Dihapus")
+        df_santri_s = load_data("santri")
+        if not df_santri_s.empty:
+            pilih_santri = st.selectbox("Pilih NIS & Nama Santri", options=df_santri_s['nis'].tolist(), format_func=lambda x: f"{x} - {df_santri_s.loc[df_santri_s['nis'] == x, 'nama'].values[0]}")
             
-            warga_terpilih = df_warga_s[df_warga_s['nis'] == pilih_warga].iloc[0]
+            santri_terpilih = df_santri_s[df_santri_s['nis'] == pilih_santri].iloc[0]
             
-            with st.form("form_edit_warga"):
-                new_nama_w = st.text_input("Nama Lengkap", value=warga_terpilih['nama'])
-                new_kelas = st.text_input("Kelas / Tingkat", value=warga_terpilih['kelas'])
-                new_kamar = st.text_input("Kamar / Asrama", value=warga_terpilih['asrama_kamar'])
-                new_wali = st.text_input("Nama Orang Tua / Wali", value=warga_terpilih['wali_murid'])
+            with st.form("form_edit_santri"):
+                new_nama_s = st.text_input("Nama Lengkap", value=santri_terpilih['nama'])
+                new_kelas = st.text_input("Kelas / Tingkat", value=santri_terpilih['kelas'])
+                new_kamar = st.text_input("Kamar / Asrama", value=santri_terpilih['asrama_kamar'])
+                new_wali = st.text_input("Nama Orang Tua / Wali", value=santri_terpilih['wali_murid'])
                 
-                col_w1, col_w2 = st.columns(2)
-                update_w_btn = col_w1.form_submit_button("💾 Perbarui Data")
-                delete_w_btn = col_w2.form_submit_button("🗑️ Hapus Data", type="primary")
+                col_s1, col_s2 = st.columns(2)
+                update_s_btn = col_s1.form_submit_button("💾 Perbarui Data")
+                delete_s_btn = col_s2.form_submit_button("🗑️ Hapus Data", type="primary")
                 
-                if update_w_btn:
-                    run_query("UPDATE warga_belajar SET nama = ?, kelas = ?, asrama_kamar = ?, wali_murid = ? WHERE nis = ?", (new_nama_w, new_kelas, new_kamar, new_wali, pilih_warga))
-                    st.success("✅ Data warga belajar berhasil diperbarui!")
+                if update_s_btn:
+                    run_query("UPDATE santri SET nama = ?, kelas = ?, asrama_kamar = ?, wali_murid = ? WHERE nis = ?", (new_nama_s, new_kelas, new_kamar, new_wali, pilih_santri))
+                    st.success("✅ Data santri berhasil diperbarui!")
                     st.rerun()
-                elif delete_w_btn:
-                    run_query("DELETE FROM warga_belajar WHERE nis = ?", (pilih_warga,))
-                    st.success("🗑️ Data warga belajar berhasil dihapus!")
+                elif delete_s_btn:
+                    run_query("DELETE FROM santri WHERE nis = ?", (pilih_santri,))
+                    st.success("🗑️ Data santri berhasil dihapus!")
                     st.rerun()
         else:
-            st.info("Belum ada data warga belajar.")
+            st.info("Belum ada data santri.")
 
     st.divider()
-    st.subheader("Daftar Warga Belajar Aktif")
-    st.dataframe(load_data("warga_belajar"), use_container_width=True)
+    st.subheader("Daftar Santri Aktif")
+    st.dataframe(load_data("santri"), use_container_width=True)
 
 # 6. DATA SARPRAS
 elif menu == "Data Sarpras":
