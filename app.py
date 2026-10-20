@@ -3,6 +3,9 @@ import pandas as pd
 import sqlite3
 import io
 import time
+from docx import Document
+from docx.shared import Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 # --- KONFIGURASI DATABASE ---
 DB_NAME = "pesantren.db"
@@ -73,6 +76,92 @@ def load_data(table_name):
     conn.close()
     return df
 
+# --- FUNGSI GENERATE WORD ---
+def generate_word_portfolio():
+    doc = Document()
+
+    df_profil = load_data("profil_pesantren")
+    nama_pp = df_profil['nama_pp'].values[0] if not df_profil.empty else "PONDOK PESANTREN"
+    
+    title_p = doc.add_paragraph()
+    title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_title = title_p.add_run(f"PORTOFOLIO & PROFIL LEMBAGA\n{nama_pp.upper()}")
+    run_title.bold = True
+    run_title.font.size = Pt(16)
+    run_title.font.color.rgb = RGBColor(0, 102, 204)
+
+    doc.add_paragraph("-------------------------------------------------------------------------------------------------------------------")
+
+    doc.add_heading("1. Profil & Legalitas Lembaga", level=1)
+    if not df_profil.empty:
+        p = df_profil.iloc[0]
+        doc.add_paragraph(f"Nama Pesantren: {p['nama_pp']}")
+        doc.add_paragraph(f"NSPP: {p['nspp'] if p['nspp'] else '-'}")
+        doc.add_paragraph(f"Pengasuh / Pimpinan: {p['pengasuh'] if p['pengasuh'] else '-'}")
+        doc.add_paragraph(f"Alamat: {p['alamat'] if p['alamat'] else '-'}")
+        doc.add_paragraph(f"Akta Notaris: {p['akta_notaris'] if p['akta_notaris'] else '-'}")
+        doc.add_paragraph(f"SK Izin Operasional: {p['sk_ijin'] if p['sk_ijin'] else '-'}")
+    else:
+        doc.add_paragraph("Belum ada data profil lembaga.")
+
+    doc.add_heading("2. Satuan Pendidikan / Unit Sekolah", level=1)
+    df_satuan = load_data("satuan_pendidikan")
+    if not df_satuan.empty:
+        table = doc.add_table(rows=1, cols=5)
+        table.style = 'Table Grid'
+        hdr = table.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NPSN', 'Nama Satuan', 'Jenjang', 'Status', 'Kepala Sekolah'
+        for _, row in df_satuan.iterrows():
+            r = table.add_row().cells
+            r[0].text, r[1].text, r[2].text, r[3].text, r[4].text = str(row['npsn']), str(row['nama_satuan']), str(row['jenjang']), str(row['status']), str(row['kepala_sekolah'])
+    else:
+        doc.add_paragraph("Belum ada data satuan pendidikan.")
+
+    doc.add_heading("3. Data Ustad / Pengajar", level=1)
+    df_ustad = load_data("ustad")
+    if not df_ustad.empty:
+        table = doc.add_table(rows=1, cols=4)
+        table.style = 'Table Grid'
+        hdr = table.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text = 'ID Ustad', 'Nama Lengkap', 'Bidang Pengajaran', 'No. HP'
+        for _, row in df_ustad.iterrows():
+            r = table.add_row().cells
+            r[0].text, r[1].text, r[2].text, r[3].text = str(row['id_ustad']), str(row['nama']), str(row['bidang_pengajaran']), str(row['no_hp'])
+    else:
+        doc.add_paragraph("Belum ada data ustad.")
+
+    doc.add_heading("4. Data Santri", level=1)
+    df_santri = load_data("santri")
+    if not df_santri.empty:
+        doc.add_paragraph(f"Total Santri Terdaftar: {len(df_santri)} Santri")
+        table = doc.add_table(rows=1, cols=5)
+        table.style = 'Table Grid'
+        hdr = table.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NIS', 'Nama Santri', 'Kelas', 'Kamar', 'Wali Santri'
+        for _, row in df_santri.iterrows():
+            r = table.add_row().cells
+            r[0].text, r[1].text, r[2].text, r[3].text, r[4].text = str(row['nis']), str(row['nama']), str(row['kelas']), str(row['kamar']), str(row['wali_santri'])
+    else:
+        doc.add_paragraph("Belum ada data santri.")
+
+    doc.add_heading("5. Inventaris Sarana & Prasarana", level=1)
+    df_sarpras = load_data("sarpras")
+    if not df_sarpras.empty:
+        table = doc.add_table(rows=1, cols=4)
+        table.style = 'Table Grid'
+        hdr = table.rows[0].cells
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text = 'Kode Barang', 'Nama Barang', 'Kondisi', 'Jumlah'
+        for _, row in df_sarpras.iterrows():
+            r = table.add_row().cells
+            r[0].text, r[1].text, r[2].text, r[3].text = str(row['kode_barang']), str(row['nama_barang']), str(row['kondisi']), str(row['jumlah'])
+    else:
+        doc.add_paragraph("Belum ada data sarpras.")
+
+    bio = io.BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio
+
 # --- TAMPILAN APLIKASI STREAMLIT ---
 st.set_page_config(page_title="SIM Pondok Pesantren", page_icon="🏫", layout="wide")
 
@@ -83,7 +172,8 @@ menu = st.sidebar.selectbox("Pilih Menu", [
     "Satuan Pendidikan", 
     "Data Ustad", 
     "Data Santri", 
-    "Data Sarpras"
+    "Data Sarpras",
+    "📄 Cetak Portofolio Word"
 ])
 
 # 1. DASHBOARD
@@ -114,14 +204,12 @@ if menu == "Dashboard":
 # 2. PROFIL PESANTREN
 elif menu == "Profil Pesantren":
     st.header("🏫 Profil & Legalitas Pondok Pesantren")
-    
     conn = sqlite3.connect(DB_NAME)
     df_profil = pd.read_sql_query("SELECT * FROM profil_pesantren ORDER BY id DESC LIMIT 1", conn)
     conn.close()
     
     with st.form("form_profil"):
         st.subheader("Perbarui Informasi Lembaga")
-        
         def_nama = df_profil['nama_pp'].values[0] if not df_profil.empty else ""
         def_nspp = df_profil['nspp'].values[0] if not df_profil.empty else ""
         def_alamat = df_profil['alamat'].values[0] if not df_profil.empty else ""
@@ -150,7 +238,6 @@ elif menu == "Profil Pesantren":
         st.divider()
         st.subheader("📄 Informasi Resmi Lembaga")
         p = df_profil.iloc[0]
-        
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(f"**Nama Pondok Pesantren:**\n{p['nama_pp']}")
@@ -160,13 +247,10 @@ elif menu == "Profil Pesantren":
             st.markdown(f"**Alamat:**\n{p['alamat'] if p['alamat'] else '-'}")
             st.markdown(f"**Akta Notaris:**\n{p['akta_notaris'] if p['akta_notaris'] else '-'}")
             st.markdown(f"**SK Ijin Operasional:**\n{p['sk_ijin'] if p['sk_ijin'] else '-'}")
-    else:
-        st.info("ℹ️ Belum ada data profil yang dimasukkan. Silakan isi form di atas.")
 
 # 3. SATUAN PENDIDIKAN
 elif menu == "Satuan Pendidikan":
     st.header("🏫 Manajemen Satuan Pendidikan / Unit Sekolah")
-    
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
 
     with tab1:
@@ -182,14 +266,11 @@ elif menu == "Satuan Pendidikan":
                     if not npsn:
                         npsn = f"NON-{int(time.time())}"
                     try:
-                        run_query("INSERT INTO satuan_pendidikan VALUES (?, ?, ?, ?, ?)", 
-                                  (npsn, nama_satuan, jenjang, status, kepala_sekolah))
+                        run_query("INSERT INTO satuan_pendidikan VALUES (?, ?, ?, ?, ?)", (npsn, nama_satuan, jenjang, status, kepala_sekolah))
                         st.success(f"Satuan pendidikan **{nama_satuan}** berhasil disimpan!")
                         st.rerun()
                     except sqlite3.IntegrityError:
                         st.error(f"NPSN '{npsn}' sudah terdaftar.")
-                else:
-                    st.warning("Nama Satuan Pendidikan wajib diisi.")
 
     with tab2:
         st.subheader("Unggah Data Satuan Pendidikan via Excel (.xlsx)")
@@ -197,23 +278,13 @@ elif menu == "Satuan Pendidikan":
         output_satuan = io.BytesIO()
         with pd.ExcelWriter(output_satuan, engine='openpyxl') as writer:
             df_template_satuan.to_excel(writer, sheet_name='Satuan Pendidikan', index=False)
-        processed_data_satuan = output_satuan.getvalue()
-        
-        st.download_button(
-            label="📥 Unduh Template Excel Satuan Pendidikan",
-            data=processed_data_satuan,
-            file_name="template_satuan_pendidikan.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        st.download_button("📥 Unduh Template Excel", data=output_satuan.getvalue(), file_name="template_satuan_pendidikan.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
         uploaded_file_satuan = st.file_uploader("Pilih file Excel (.xlsx)", type=["xlsx"], key="up_satuan")
-        
         if uploaded_file_satuan is not None:
             try:
                 df_upload_satuan = pd.read_excel(uploaded_file_satuan, engine='openpyxl')
-                st.write("Pratinjau Data:", df_upload_satuan.head())
-                
                 if st.button("Proses Impor Satuan Pendidikan"):
                     conn = sqlite3.connect(DB_NAME)
                     df_upload_satuan.to_sql('satuan_pendidikan', conn, if_exists='append', index=False)
@@ -224,13 +295,12 @@ elif menu == "Satuan Pendidikan":
                 st.error(f"Terjadi kesalahan: {e}")
 
     st.divider()
-    st.subheader("📋 Daftar Unit Satuan Pendidikan di Pesantren")
+    st.subheader("📋 Daftar Unit Satuan Pendidikan")
     st.dataframe(load_data("satuan_pendidikan"), use_container_width=True)
 
 # 4. DATA USTAD
 elif menu == "Data Ustad":
     st.header("👨‍🏫 Manajemen Data Ustad / Pengajar")
-    
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
     
     with tab1:
@@ -247,8 +317,6 @@ elif menu == "Data Ustad":
                         st.rerun()
                     except sqlite3.IntegrityError:
                         st.error(f"ID Ustad '{id_ustad}' sudah terdaftar.")
-                else:
-                    st.warning("ID dan Nama wajib diisi.")
 
     with tab2:
         st.subheader("Unggah Data Ustad Masal via Excel (.xlsx)")
@@ -256,23 +324,13 @@ elif menu == "Data Ustad":
         output_ustad = io.BytesIO()
         with pd.ExcelWriter(output_ustad, engine='openpyxl') as writer:
             df_template_ustad.to_excel(writer, sheet_name='Data Ustad', index=False)
-        processed_data_ustad = output_ustad.getvalue()
-        
-        st.download_button(
-            label="📥 Unduh Template Excel Ustad",
-            data=processed_data_ustad,
-            file_name="template_data_ustad.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        st.download_button("📥 Unduh Template Excel", data=output_ustad.getvalue(), file_name="template_data_ustad.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
-        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx) data ustad", type=["xlsx"], key="up_ustad")
-        
+        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx)", type=["xlsx"], key="up_ustad")
         if uploaded_file_ustad is not None:
             try:
                 df_upload_ustad = pd.read_excel(uploaded_file_ustad, engine='openpyxl')
-                st.write("Pratinjau Data Ustad:", df_upload_ustad.head())
-                
                 if st.button("Proses Impor Ustad"):
                     conn = sqlite3.connect(DB_NAME)
                     df_upload_ustad.to_sql('ustad', conn, if_exists='append', index=False)
@@ -285,51 +343,39 @@ elif menu == "Data Ustad":
     st.divider()
     st.subheader("🔍 Cari & Hapus Data Ustad")
     df_ustad_s = load_data("ustad")
-    
     if not df_ustad_s.empty:
         keyword_ustad = st.text_input("Cari berdasarkan Nama atau ID Ustad")
         if keyword_ustad:
-            df_ustad_s = df_ustad_s[
-                df_ustad_s['nama'].str.contains(keyword_ustad, case=False, na=False) | 
-                df_ustad_s['id_ustad'].str.contains(keyword_ustad, case=False, na=False)
-            ]
-        
+            df_ustad_s = df_ustad_s[df_ustad_s['nama'].str.contains(keyword_ustad, case=False, na=False) | df_ustad_s['id_ustad'].str.contains(keyword_ustad, case=False, na=False)]
         st.dataframe(df_ustad_s, use_container_width=True)
         
-        # Form Hapus Ustad Berdasarkan ID
         with st.form("form_hapus_ustad"):
-            st.write("Hapus Data Ustad")
-            id_hapus = st.selectbox("Pilih ID Ustad yang akan dihapus", options=df_ustad_s['id_ustad'].tolist() if not df_ustad_s.empty else [])
+            id_hapus = st.selectbox("Pilih ID Ustad yang akan dihapus", options=df_ustad_s['id_ustad'].tolist())
             if st.form_submit_button("Hapus Ustad Pilihan", type="primary"):
-                if id_hapus:
-                    run_query("DELETE FROM ustad WHERE id_ustad = ?", (id_hapus,))
-                    st.success(f"Data ustad dengan ID {id_hapus} berhasil dihapus!")
-                    st.rerun()
-    else:
-        st.info("Belum ada data ustad untuk dicari atau dihapus.")
+                run_query("DELETE FROM ustad WHERE id_ustad = ?", (id_hapus,))
+                st.success("Data ustad berhasil dihapus!")
+                st.rerun()
 
 # 5. DATA SANTRI
 elif menu == "Data Santri":
     st.header("👦👧 Manajemen Data Santri")
-    
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
     
     with tab1:
         with st.form("form_santri", clear_on_submit=True):
-            nis = st.text_input("NIS (Nomor Induk Santri)")
-            nama = st.text_input("Nama Lengkap Santri")
-            kelas = st.text_input("Kelas / Jenjang")
+            nis = st.text_input("NIS")
+            nama = st.text_input("Nama Lengkap")
+            kelas = st.text_input("Kelas")
             kamar = st.text_input("Kamar Asrama")
-            wali = st.text_input("Nama Wali Santri")
+            wali = st.text_input("Nama Wali")
             if st.form_submit_button("Simpan Data Santri"):
                 if nis and nama:
                     try:
                         run_query("INSERT INTO santri VALUES (?, ?, ?, ?, ?)", (nis, nama, kelas, kamar, wali))
                         st.success(f"Data santri **{nama}** berhasil disimpan!")
+                        st.rerun()
                     except sqlite3.IntegrityError:
                         st.error(f"NIS '{nis}' sudah terdaftar.")
-                else:
-                    st.warning("NIS dan Nama wajib diisi.")
 
     with tab2:
         st.subheader("Unggah Data Santri Masal via Excel (.xlsx)")
@@ -337,23 +383,13 @@ elif menu == "Data Santri":
         output_santri = io.BytesIO()
         with pd.ExcelWriter(output_santri, engine='openpyxl') as writer:
             df_template_santri.to_excel(writer, sheet_name='Data Santri', index=False)
-        processed_data_santri = output_santri.getvalue()
-        
-        st.download_button(
-            label="📥 Unduh Template Excel Santri",
-            data=processed_data_santri,
-            file_name="template_data_santri.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        st.download_button("📥 Unduh Template Excel", data=output_santri.getvalue(), file_name="template_data_santri.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
-        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) data santri", type=["xlsx"], key="up_santri")
-        
+        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx)", type=["xlsx"], key="up_santri")
         if uploaded_file is not None:
             try:
                 df_upload = pd.read_excel(uploaded_file, engine='openpyxl')
-                st.write("Pratinjau Data Santri:", df_upload.head())
-                
                 if st.button("Proses Impor Santri"):
                     conn = sqlite3.connect(DB_NAME)
                     df_upload.to_sql('santri', conn, if_exists='append', index=False)
@@ -366,28 +402,18 @@ elif menu == "Data Santri":
     st.divider()
     st.subheader("🔍 Cari & Hapus Data Santri")
     df_santri_s = load_data("santri")
-    
     if not df_santri_s.empty:
         keyword = st.text_input("Cari berdasarkan Nama atau NIS Santri")
         if keyword:
-            df_santri_s = df_santri_s[
-                df_santri_s['nama'].str.contains(keyword, case=False, na=False) | 
-                df_santri_s['nis'].str.contains(keyword, case=False, na=False)
-            ]
-        
+            df_santri_s = df_santri_s[df_santri_s['nama'].str.contains(keyword, case=False, na=False) | df_santri_s['nis'].str.contains(keyword, case=False, na=False)]
         st.dataframe(df_santri_s, use_container_width=True)
         
-        # Form Hapus Santri Berdasarkan NIS
         with st.form("form_hapus_santri"):
-            st.write("Hapus Data Santri")
-            nis_hapus = st.selectbox("Pilih NIS Santri yang akan dihapus", options=df_santri_s['nis'].tolist() if not df_santri_s.empty else [])
+            nis_hapus = st.selectbox("Pilih NIS Santri yang akan dihapus", options=df_santri_s['nis'].tolist())
             if st.form_submit_button("Hapus Santri Pilihan", type="primary"):
-                if nis_hapus:
-                    run_query("DELETE FROM santri WHERE nis = ?", (nis_hapus,))
-                    st.success(f"Data santri dengan NIS {nis_hapus} berhasil dihapus!")
-                    st.rerun()
-    else:
-        st.info("Belum ada data santri untuk dicari atau dihapus.")
+                run_query("DELETE FROM santri WHERE nis = ?", (nis_hapus,))
+                st.success("Data santri berhasil dihapus!")
+                st.rerun()
 
 # 6. DATA SARPRAS
 elif menu == "Data Sarpras":
@@ -402,10 +428,28 @@ elif menu == "Data Sarpras":
                 try:
                     run_query("INSERT INTO sarpras VALUES (?, ?, ?, ?)", (kode, nama_brg, kondisi, int(jumlah)))
                     st.success(f"Data sarpras **{nama_brg}** berhasil disimpan!")
+                    st.rerun()
                 except sqlite3.IntegrityError:
                     st.error(f"Kode Barang '{kode}' sudah terdaftar.")
-            else:
-                st.warning("Kode dan Nama Barang wajib diisi.")
 
     st.subheader("Daftar Inventaris Sarpras")
     st.dataframe(load_data("sarpras"), use_container_width=True)
+
+# 7. CETAK PORTOFOLIO WORD
+elif menu == "📄 Cetak Portofolio Word":
+    st.header("📄 Cetak Portofolio Lembaga (.docx)")
+    st.write("Unduh rangkuman seluruh data pesantren per lembaga dalam bentuk dokumen Word yang rapi dan siap dicetak.")
+    st.divider()
+    
+    df_profil = load_data("profil_pesantren")
+    nama_pp = df_profil['nama_pp'].values[0] if not df_profil.empty else "Pesantren"
+    
+    doc_file = generate_word_portfolio()
+    
+    st.download_button(
+        label="📥 Download Portofolio Word (.docx)",
+        data=doc_file,
+        file_name=f"Portofolio_{nama_pp.replace(' ', '_')}.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        type="primary"
+    )
