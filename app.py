@@ -3,12 +3,17 @@ import pandas as pd
 import sqlite3
 import io
 import time
+import os
 from docx import Document
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-# --- KONFIGURASI DATABASE ---
+# --- KONFIGURASI FOLDER & DATABASE ---
 DB_NAME = "pesantren.db"
+UPLOAD_DIR = "uploads"
+
+if not os.path.exists(UPLOAD_DIR):
+    os.makedirs(UPLOAD_DIR)
 
 def init_db():
     conn = sqlite3.connect(DB_NAME)
@@ -58,6 +63,14 @@ def init_db():
             jumlah INTEGER
         )
     ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS galeri_foto (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            kategori TEXT,
+            nama_file TEXT,
+            keterangan TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -92,6 +105,7 @@ def generate_word_portfolio():
 
     doc.add_paragraph("-------------------------------------------------------------------------------------------------------------------")
 
+    # 1. Profil
     doc.add_heading("1. Profil & Legalitas Lembaga", level=1)
     if not df_profil.empty:
         p = df_profil.iloc[0]
@@ -104,6 +118,7 @@ def generate_word_portfolio():
     else:
         doc.add_paragraph("Belum ada data profil lembaga.")
 
+    # 2. Satuan Pendidikan
     doc.add_heading("2. Satuan Pendidikan / Unit Sekolah", level=1)
     df_satuan = load_data("satuan_pendidikan")
     if not df_satuan.empty:
@@ -117,6 +132,7 @@ def generate_word_portfolio():
     else:
         doc.add_paragraph("Belum ada data satuan pendidikan.")
 
+    # 3. Ustad
     doc.add_heading("3. Data Ustad / Pengajar", level=1)
     df_ustad = load_data("ustad")
     if not df_ustad.empty:
@@ -130,6 +146,7 @@ def generate_word_portfolio():
     else:
         doc.add_paragraph("Belum ada data ustad.")
 
+    # 4. Santri
     doc.add_heading("4. Data Santri", level=1)
     df_santri = load_data("santri")
     if not df_santri.empty:
@@ -144,6 +161,7 @@ def generate_word_portfolio():
     else:
         doc.add_paragraph("Belum ada data santri.")
 
+    # 5. Sarpras
     doc.add_heading("5. Inventaris Sarana & Prasarana", level=1)
     df_sarpras = load_data("sarpras")
     if not df_sarpras.empty:
@@ -173,6 +191,7 @@ menu = st.sidebar.selectbox("Pilih Menu", [
     "Data Ustad", 
     "Data Santri", 
     "Data Sarpras",
+    "📸 Galeri & Dokumentasi",
     "📄 Cetak Portofolio Word"
 ])
 
@@ -467,6 +486,74 @@ elif menu == "Data Sarpras":
 
     st.subheader("Daftar Inventaris Sarpras")
     st.dataframe(load_data("sarpras"), use_container_width=True)
+
+# 6.5 GALERI & DOKUMENTASI FOTO
+elif menu == "📸 Galeri & Dokumentasi":
+    st.header("📸 Galeri & Dokumentasi Visual Pesantren")
+    tab1, tab2 = st.tabs(["➕ Unggah Foto Baru", "🖼️ Lihat & Kelola Galeri"])
+    
+    with tab1:
+        with st.form("form_galeri", clear_on_submit=True):
+            kategori = st.selectbox("Pilih Kategori Foto", [
+                "Papan Nama Pesantren", 
+                "Foto Asrama", 
+                "Foto Ruang Belajar", 
+                "Foto Kegiatan KBM"
+            ])
+            keterangan = st.text_input("Keterangan / Deskripsi Foto")
+            file_foto = st.file_uploader("Pilih Berkas Foto", type=["jpg", "jpeg", "png"])
+            
+            if st.form_submit_button("Unggah Foto"):
+                if file_foto is not None:
+                    nama_file_unik = f"{int(time.time())}_{file_foto.name}"
+                    file_path = os.path.join(UPLOAD_DIR, nama_file_unik)
+                    
+                    with open(file_path, "wb") as f:
+                        f.write(file_foto.getbuffer())
+                        
+                    run_query("INSERT INTO galeri_foto (kategori, nama_file, keterangan) VALUES (?, ?, ?)", 
+                              (kategori, nama_file_unik, keterangan))
+                    st.success(f"✅ Foto kategori **{kategori}** berhasil diunggah!")
+                    st.rerun()
+                else:
+                    st.warning("Pilih file foto terlebih dahulu.")
+
+    with tab2:
+        st.subheader("Daftar Dokumentasi Visual Tersimpan")
+        conn = sqlite3.connect(DB_NAME)
+        df_galeri = pd.read_sql_query("SELECT * FROM galeri_foto", conn)
+        conn.close()
+        
+        if not df_galeri.empty:
+            filter_kat = st.selectbox("Filter Kategori", ["Semua Kategori", "Papan Nama Pesantren", "Foto Asrama", "Foto Ruang Belajar", "Foto Kegiatan KBM"])
+            
+            if filter_kat != "Semua Kategori":
+                df_tampil = df_galeri[df_galeri['kategori'] == filter_kat]
+            else:
+                df_tampil = df_galeri
+                
+            if not df_tampil.empty:
+                for index, row in df_tampil.iterrows():
+                    st.markdown(f"### Kategori: {row['kategori']}")
+                    st.write(f"**Keterangan:** {row['keterangan'] if row['keterangan'] else '-'}")
+                    
+                    img_path = os.path.join(UPLOAD_DIR, row['nama_file'])
+                    if os.path.exists(img_path):
+                        st.image(img_path, width=400)
+                    else:
+                        st.error("File foto fisik tidak ditemukan di direktori.")
+                        
+                    if st.button(f"🗑️ Hapus Foto ID {row['id']}", key=f"del_foto_{row['id']}"):
+                        if os.path.exists(img_path):
+                            os.remove(img_path)
+                        run_query("DELETE FROM galeri_foto WHERE id = ?", (row['id'],))
+                        st.success("Foto berhasil dihapus!")
+                        st.rerun()
+                    st.divider()
+            else:
+                st.info("Tidak ada foto pada kategori ini.")
+        else:
+            st.info("Belum ada foto dokumentasi yang diunggah.")
 
 # 7. CETAK PORTOFOLIO WORD
 elif menu == "📄 Cetak Portofolio Word":
