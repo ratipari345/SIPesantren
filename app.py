@@ -391,4 +391,98 @@ elif menu == "Data Santri":
                         st.success(f"Data santri **{nama}** berhasil disimpan!")
                         st.rerun()
                     except sqlite3.IntegrityError:
-                        st.error(f"
+                        st.error(f"NIS '{nis}' sudah terdaftar.")
+
+    with tab2:
+        st.subheader("Unggah Data Santri Masal via Excel (.xlsx)")
+        df_template_santri = pd.DataFrame(columns=["nis", "nama", "kelas", "kamar", "wali_santri"])
+        output_santri = io.BytesIO()
+        with pd.ExcelWriter(output_santri, engine='openpyxl') as writer:
+            df_template_santri.to_excel(writer, sheet_name='Data Santri', index=False)
+        st.download_button("📥 Unduh Template Excel", data=output_santri.getvalue(), file_name="template_data_santri.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        
+        st.divider()
+        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) data santri", type=["xlsx"], key="up_santri")
+        if uploaded_file is not None:
+            try:
+                df_upload = pd.read_excel(uploaded_file, engine='openpyxl')
+                if st.button("Proses Impor Santri"):
+                    conn = sqlite3.connect(DB_NAME)
+                    df_upload.to_sql('santri', conn, if_exists='append', index=False)
+                    conn.close()
+                    st.success("✅ Data santri berhasil diimpor!")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Terjadi kesalahan: {e}")
+
+    with tab3:
+        st.subheader("Pilih Santri yang Ingin Diedit atau Dihapus")
+        df_santri_s = load_data("santri")
+        if not df_santri_s.empty:
+            pilih_santri = st.selectbox("Pilih NIS & Nama Santri", options=df_santri_s['nis'].tolist(), format_func=lambda x: f"{x} - {df_santri_s.loc[df_santri_s['nis'] == x, 'nama'].values[0]}")
+            
+            santri_terpilih = df_santri_s[df_santri_s['nis'] == pilih_santri].iloc[0]
+            
+            with st.form("form_edit_santri"):
+                new_nama_s = st.text_input("Nama Lengkap", value=santri_terpilih['nama'])
+                new_kelas = st.text_input("Kelas", value=santri_terpilih['kelas'])
+                new_kamar = st.text_input("Kamar Asrama", value=santri_terpilih['kamar'])
+                new_wali = st.text_input("Nama Wali Santri", value=santri_terpilih['wali_santri'])
+                
+                col_s1, col_s2 = st.columns(2)
+                update_s_btn = col_s1.form_submit_button("💾 Perbarui Data")
+                delete_s_btn = col_s2.form_submit_button("🗑️ Hapus Data", type="primary")
+                
+                if update_s_btn:
+                    run_query("UPDATE santri SET nama = ?, kelas = ?, kamar = ?, wali_santri = ? WHERE nis = ?", (new_nama_s, new_kelas, new_kamar, new_wali, pilih_santri))
+                    st.success("✅ Data santri berhasil diperbarui!")
+                    st.rerun()
+                elif delete_s_btn:
+                    run_query("DELETE FROM santri WHERE nis = ?", (pilih_santri,))
+                    st.success("🗑️ Data santri berhasil dihapus!")
+                    st.rerun()
+        else:
+            st.info("Belum ada data santri.")
+
+    st.divider()
+    st.subheader("Daftar Santri Aktif")
+    st.dataframe(load_data("santri"), use_container_width=True)
+
+# 6. DATA SARPRAS
+elif menu == "Data Sarpras":
+    st.header("🏢 Manajemen Sarana & Prasarana")
+    with st.form("form_sarpras", clear_on_submit=True):
+        kode = st.text_input("Kode Barang")
+        nama_brg = st.text_input("Nama Barang")
+        kondisi = st.selectbox("Kondisi", ["Baik", "Rusak Ringan", "Rusak Berat"])
+        jumlah = st.number_input("Jumlah Unit", min_value=1, step=1)
+        if st.form_submit_button("Simpan Data Sarpras"):
+            if kode and nama_brg:
+                try:
+                    run_query("INSERT INTO sarpras VALUES (?, ?, ?, ?)", (kode, nama_brg, kondisi, int(jumlah)))
+                    st.success(f"Data sarpras **{nama_brg}** berhasil disimpan!")
+                    st.rerun()
+                except sqlite3.IntegrityError:
+                    st.error(f"Kode Barang '{kode}' sudah terdaftar.")
+
+    st.subheader("Daftar Inventaris Sarpras")
+    st.dataframe(load_data("sarpras"), use_container_width=True)
+
+# 7. CETAK PORTOFOLIO WORD
+elif menu == "📄 Cetak Portofolio Word":
+    st.header("📄 Cetak Portofolio Lembaga (.docx)")
+    st.write("Unduh rangkuman seluruh data pesantren per lembaga dalam bentuk dokumen Word yang rapi dan siap dicetak.")
+    st.divider()
+    
+    df_profil = load_data("profil_pesantren")
+    nama_pp = df_profil['nama_pp'].values[0] if not df_profil.empty else "Pesantren"
+    
+    doc_file = generate_word_portfolio()
+    
+    st.download_button(
+        label="📥 Download Portofolio Word (.docx)",
+        data=doc_file,
+        file_name=f"Portofolio_{nama_pp.replace(' ', '_')}.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        type="primary"
+    )
