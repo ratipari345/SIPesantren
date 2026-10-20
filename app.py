@@ -180,7 +180,7 @@ def generate_word_portfolio():
     bio.seek(0)
     return bio
 
-# --- TAMPILAN APLIKASI STREAMLIT & TEMA HIJAU KHAS PESANTREN ---
+# --- TAMPILAN APLIKASI STREAMLIT & TEMA KUSTOM ---
 st.set_page_config(page_title="SIM Pondok Pesantren", page_icon="🏫", layout="wide")
 
 st.markdown("""
@@ -196,14 +196,14 @@ st.markdown("""
         color: #000000 !important;
     }
 
-    /* Membuat latar belakang SEMUA kotak input, textarea, selectbox, dan number input menjadi ABU-ABU terang dengan teks hitam */
+    /* Kotak input berwarna abu-abu terang */
     .stTextInput input, .stTextArea textarea, .stSelectbox select, .stNumberInput input {
         color: #000000 !important;
         background-color: #e2e8f0 !important;
         border: 1px solid #cbd5e1 !important;
     }
 
-    /* Mengubah latar belakang sidebar */
+    /* Mengubah latar belakang sidebar menjadi hijau tua */
     [data-testid="stSidebar"] {
         background-color: #1b4d3e !important;
     }
@@ -218,14 +218,15 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* Kustomisasi tombol utama */
-    .stButton>button[kind="primary"] {
-        background-color: #2d6a4f !important;
+    /* Mengubah SEMUA TOMBOL (termasuk tombol Simpan) menjadi WARNA BIRU */
+    .stButton > button {
+        background-color: #2563eb !important;
         color: #ffffff !important;
         border-radius: 8px;
+        border: none !important;
     }
-    .stButton>button[kind="primary"]:hover {
-        background-color: #1b4d3e !important;
+    .stButton > button:hover {
+        background-color: #1d4ed8 !important;
     }
     
     /* Kartu / Kotak Form Input */
@@ -233,7 +234,7 @@ st.markdown("""
         background-color: #ffffff;
         padding: 20px;
         border-radius: 10px;
-        border: 1px solid #2d6a4f;
+        border: 1px solid #cbd5e1;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     </style>
