@@ -1,7 +1,3 @@
-Berikut adalah versi lengkap dan terbaru dari aplikasi Anda. Sekarang semua menu utama (Profil Lembaga, Satuan Pendidikan, Data Pengajar, Data Santri, Data Sarpras, dan Galeri Foto) sudah dilengkapi dengan fitur Edit dan Hapus Data.
-
-Silakan salin seluruh kode di bawah ini dan tempelkan ke file app.py Anda:
-
 Python
 import streamlit as st
 import pandas as pd
