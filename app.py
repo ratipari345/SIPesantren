@@ -244,6 +244,7 @@ elif menu == "Data Ustad":
                     try:
                         run_query("INSERT INTO ustad VALUES (?, ?, ?, ?)", (id_ustad, nama, bidang, hp))
                         st.success(f"Data ustad **{nama}** berhasil disimpan!")
+                        st.rerun()
                     except sqlite3.IntegrityError:
                         st.error(f"ID Ustad '{id_ustad}' sudah terdaftar.")
                 else:
@@ -281,8 +282,31 @@ elif menu == "Data Ustad":
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
 
-    st.subheader("Daftar Ustad Aktif")
-    st.dataframe(load_data("ustad"), use_container_width=True)
+    st.divider()
+    st.subheader("🔍 Cari & Hapus Data Ustad")
+    df_ustad_s = load_data("ustad")
+    
+    if not df_ustad_s.empty:
+        keyword_ustad = st.text_input("Cari berdasarkan Nama atau ID Ustad")
+        if keyword_ustad:
+            df_ustad_s = df_ustad_s[
+                df_ustad_s['nama'].str.contains(keyword_ustad, case=False, na=False) | 
+                df_ustad_s['id_ustad'].str.contains(keyword_ustad, case=False, na=False)
+            ]
+        
+        st.dataframe(df_ustad_s, use_container_width=True)
+        
+        # Form Hapus Ustad Berdasarkan ID
+        with st.form("form_hapus_ustad"):
+            st.write("Hapus Data Ustad")
+            id_hapus = st.selectbox("Pilih ID Ustad yang akan dihapus", options=df_ustad_s['id_ustad'].tolist() if not df_ustad_s.empty else [])
+            if st.form_submit_button("Hapus Ustad Pilihan", type="primary"):
+                if id_hapus:
+                    run_query("DELETE FROM ustad WHERE id_ustad = ?", (id_hapus,))
+                    st.success(f"Data ustad dengan ID {id_hapus} berhasil dihapus!")
+                    st.rerun()
+    else:
+        st.info("Belum ada data ustad untuk dicari atau dihapus.")
 
 # 5. DATA SANTRI
 elif menu == "Data Santri":
@@ -339,8 +363,31 @@ elif menu == "Data Santri":
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
 
-    st.subheader("Daftar Santri Aktif")
-    st.dataframe(load_data("santri"), use_container_width=True)
+    st.divider()
+    st.subheader("🔍 Cari & Hapus Data Santri")
+    df_santri_s = load_data("santri")
+    
+    if not df_santri_s.empty:
+        keyword = st.text_input("Cari berdasarkan Nama atau NIS Santri")
+        if keyword:
+            df_santri_s = df_santri_s[
+                df_santri_s['nama'].str.contains(keyword, case=False, na=False) | 
+                df_santri_s['nis'].str.contains(keyword, case=False, na=False)
+            ]
+        
+        st.dataframe(df_santri_s, use_container_width=True)
+        
+        # Form Hapus Santri Berdasarkan NIS
+        with st.form("form_hapus_santri"):
+            st.write("Hapus Data Santri")
+            nis_hapus = st.selectbox("Pilih NIS Santri yang akan dihapus", options=df_santri_s['nis'].tolist() if not df_santri_s.empty else [])
+            if st.form_submit_button("Hapus Santri Pilihan", type="primary"):
+                if nis_hapus:
+                    run_query("DELETE FROM santri WHERE nis = ?", (nis_hapus,))
+                    st.success(f"Data santri dengan NIS {nis_hapus} berhasil dihapus!")
+                    st.rerun()
+    else:
+        st.info("Belum ada data santri untuk dicari atau dihapus.")
 
 # 6. DATA SARPRAS
 elif menu == "Data Sarpras":
