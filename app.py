@@ -9,7 +9,7 @@ from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 # --- KONFIGURASI FOLDER & DATABASE ---
-DB_NAME = "pesantren.db"
+DB_NAME = "lpki.db"
 UPLOAD_DIR = "uploads"
 
 if not os.path.exists(UPLOAD_DIR):
@@ -19,12 +19,12 @@ def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS profil_pesantren (
+        CREATE TABLE IF NOT EXISTS profil_lembaga (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nama_pp TEXT,
+            nama_lembaga TEXT,
             nspp TEXT,
             alamat TEXT,
-            pengasuh TEXT,
+            pimpinan TEXT,
             akta_notaris TEXT,
             sk_ijin TEXT
         )
@@ -39,20 +39,20 @@ def init_db():
         )
     ''')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS ustad (
-            id_ustad TEXT PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS pengajar (
+            id_pengajar TEXT PRIMARY KEY,
             nama TEXT NOT NULL,
             bidang_pengajaran TEXT,
             no_hp TEXT
         )
     ''')
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS santri (
+        CREATE TABLE IF NOT EXISTS warga_belajar (
             nis TEXT PRIMARY KEY,
             nama TEXT NOT NULL,
             kelas TEXT,
-            kamar TEXT,
-            wali_santri TEXT
+            asrama_kamar TEXT,
+            wali_murid TEXT
         )
     ''')
     cursor.execute('''
@@ -93,12 +93,12 @@ def load_data(table_name):
 def generate_word_portfolio():
     doc = Document()
 
-    df_profil = load_data("profil_pesantren")
-    nama_pp = df_profil['nama_pp'].values[0] if not df_profil.empty else "PONDOK PESANTREN"
+    df_profil = load_data("profil_lembaga")
+    nama_lembaga = df_profil['nama_lembaga'].values[0] if not df_profil.empty else "LEMBAGA PENDIDIKAN KEAGAMAAN ISLAM"
     
     title_p = doc.add_paragraph()
     title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run_title = title_p.add_run(f"PORTOFOLIO & PROFIL LEMBAGA\n{nama_pp.upper()}")
+    run_title = title_p.add_run(f"PORTOFOLIO & PROFIL LEMBAGA\n{nama_lembaga.upper()}")
     run_title.bold = True
     run_title.font.size = Pt(16)
     run_title.font.color.rgb = RGBColor(0, 102, 204)
@@ -109,9 +109,9 @@ def generate_word_portfolio():
     doc.add_heading("1. Profil & Legalitas Lembaga", level=1)
     if not df_profil.empty:
         p = df_profil.iloc[0]
-        doc.add_paragraph(f"Nama Pesantren: {p['nama_pp']}")
+        doc.add_paragraph(f"Nama Lembaga: {p['nama_lembaga']}")
         doc.add_paragraph(f"NSPP: {p['nspp'] if p['nspp'] else '-'}")
-        doc.add_paragraph(f"Pengasuh / Pimpinan: {p['pengasuh'] if p['pengasuh'] else '-'}")
+        doc.add_paragraph(f"Pimpinan / Ketua: {p['pimpinan'] if p['pimpinan'] else '-'}")
         doc.add_paragraph(f"Alamat: {p['alamat'] if p['alamat'] else '-'}")
         doc.add_paragraph(f"Akta Notaris: {p['akta_notaris'] if p['akta_notaris'] else '-'}")
         doc.add_paragraph(f"SK Izin Operasional: {p['sk_ijin'] if p['sk_ijin'] else '-'}")
@@ -132,34 +132,34 @@ def generate_word_portfolio():
     else:
         doc.add_paragraph("Belum ada data satuan pendidikan.")
 
-    # 3. Ustad
-    doc.add_heading("3. Data Ustad / Pengajar", level=1)
-    df_ustad = load_data("ustad")
-    if not df_ustad.empty:
+    # 3. Pengajar
+    doc.add_heading("3. Data Pengajar / Ustadz", level=1)
+    df_pengajar = load_data("pengajar")
+    if not df_pengajar.empty:
         table = doc.add_table(rows=1, cols=4)
         table.style = 'Table Grid'
         hdr = table.rows[0].cells
-        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text = 'ID Ustad', 'Nama Lengkap', 'Bidang Pengajaran', 'No. HP'
-        for _, row in df_ustad.iterrows():
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text = 'ID Pengajar', 'Nama Lengkap', 'Bidang Pengajaran', 'No. HP'
+        for _, row in df_pengajar.iterrows():
             r = table.add_row().cells
-            r[0].text, r[1].text, r[2].text, r[3].text = str(row['id_ustad']), str(row['nama']), str(row['bidang_pengajaran']), str(row['no_hp'])
+            r[0].text, r[1].text, r[2].text, r[3].text = str(row['id_pengajar']), str(row['nama']), str(row['bidang_pengajaran']), str(row['no_hp'])
     else:
-        doc.add_paragraph("Belum ada data ustad.")
+        doc.add_paragraph("Belum ada data pengajar.")
 
-    # 4. Santri
-    doc.add_heading("4. Data Santri", level=1)
-    df_santri = load_data("santri")
-    if not df_santri.empty:
-        doc.add_paragraph(f"Total Santri Terdaftar: {len(df_santri)} Santri")
+    # 4. Warga Belajar / Santri/Siswa
+    doc.add_heading("4. Data Warga Belajar / Santri / Siswa", level=1)
+    df_warga = load_data("warga_belajar")
+    if not df_warga.empty:
+        doc.add_paragraph(f"Total Warga Belajar Terdaftar: {len(df_warga)} Orang")
         table = doc.add_table(rows=1, cols=5)
         table.style = 'Table Grid'
         hdr = table.rows[0].cells
-        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NIS', 'Nama Santri', 'Kelas', 'Kamar', 'Wali Santri'
-        for _, row in df_santri.iterrows():
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NIS', 'Nama Warga Belajar', 'Kelas', 'Kamar/Asrama', 'Wali Murid'
+        for _, row in df_warga.iterrows():
             r = table.add_row().cells
-            r[0].text, r[1].text, r[2].text, r[3].text, r[4].text = str(row['nis']), str(row['nama']), str(row['kelas']), str(row['kamar']), str(row['wali_santri'])
+            r[0].text, r[1].text, r[2].text, r[3].text, r[4].text = str(row['nis']), str(row['nama']), str(row['kelas']), str(row['asrama_kamar']), str(row['wali_murid'])
     else:
-        doc.add_paragraph("Belum ada data santri.")
+        doc.add_paragraph("Belum ada data warga belajar.")
 
     # 5. Sarpras
     doc.add_heading("5. Inventaris Sarana & Prasarana", level=1)
@@ -181,7 +181,7 @@ def generate_word_portfolio():
     return bio
 
 # --- TAMPILAN APLIKASI STREAMLIT & TEMA KUSTOM ---
-st.set_page_config(page_title="SIM Pondok Pesantren", page_icon="🏫", layout="wide")
+st.set_page_config(page_title="SIM Lembaga Pendidikan Keagamaan Islam", page_icon="🕌", layout="wide")
 
 st.markdown("""
     <style>
@@ -240,13 +240,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.sidebar.title("🏫 SIM Pesantren")
+st.sidebar.title("🕌 SIM LPKI")
 menu = st.sidebar.selectbox("Pilih Menu", [
     "Dashboard", 
-    "Profil Pesantren", 
+    "Profil Lembaga", 
     "Satuan Pendidikan", 
-    "Data Ustad", 
-    "Data Santri", 
+    "Data Pengajar", 
+    "Data Warga Belajar", 
     "Data Sarpras",
     "📸 Galeri & Dokumentasi",
     "📄 Cetak Portofolio Word"
@@ -255,60 +255,60 @@ menu = st.sidebar.selectbox("Pilih Menu", [
 # 1. DASHBOARD
 if menu == "Dashboard":
     conn = sqlite3.connect(DB_NAME)
-    df_profil = pd.read_sql_query("SELECT nama_pp FROM profil_pesantren ORDER BY id DESC LIMIT 1", conn)
+    df_profil = pd.read_sql_query("SELECT nama_lembaga FROM profil_lembaga ORDER BY id DESC LIMIT 1", conn)
     conn.close()
     
-    nama_pesantren = df_profil['nama_pp'].values[0] if not df_profil.empty else "Pondok Pesantren"
+    nama_lembaga = df_profil['nama_lembaga'].values[0] if not df_profil.empty else "Lembaga Pendidikan Keagamaan Islam"
     
     st.header("📊 Dashboard Rekapitulasi")
-    st.subheader(f"🏫 {nama_pesantren}")
+    st.subheader(f"🕌 {nama_lembaga}")
     st.divider()
 
     df_satuan = load_data("satuan_pendidikan")
-    df_ustad = load_data("ustad")
-    df_santri = load_data("santri")
+    df_pengajar = load_data("pengajar")
+    df_warga = load_data("warga_belajar")
     df_sarpras = load_data("sarpras")
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Satuan Pendidikan", len(df_satuan))
-    col2.metric("Total Ustad", len(df_ustad))
-    col3.metric("Total Santri", len(df_santri))
+    col2.metric("Total Pengajar", len(df_pengajar))
+    col3.metric("Total Warga Belajar", len(df_warga))
     col4.metric("Total Sarpras", len(df_sarpras))
 
     st.success("✅ Aplikasi siap digunakan dan data tersimpan dengan aman!")
 
-# 2. PROFIL PESANTREN
-elif menu == "Profil Pesantren":
-    st.header("🏫 Profil & Legalitas Pondok Pesantren")
+# 2. PROFIL LEMBAGA
+elif menu == "Profil Lembaga":
+    st.header("🕌 Profil & Legalitas Lembaga Pendidikan Keagamaan Islam")
     conn = sqlite3.connect(DB_NAME)
-    df_profil = pd.read_sql_query("SELECT * FROM profil_pesantren ORDER BY id DESC LIMIT 1", conn)
+    df_profil = pd.read_sql_query("SELECT * FROM profil_lembaga ORDER BY id DESC LIMIT 1", conn)
     conn.close()
     
     with st.form("form_profil"):
         st.subheader("Perbarui Informasi Lembaga")
-        def_nama = df_profil['nama_pp'].values[0] if not df_profil.empty else ""
+        def_nama = df_profil['nama_lembaga'].values[0] if not df_profil.empty else ""
         def_nspp = df_profil['nspp'].values[0] if not df_profil.empty else ""
         def_alamat = df_profil['alamat'].values[0] if not df_profil.empty else ""
-        def_pengasuh = df_profil['pengasuh'].values[0] if not df_profil.empty else ""
+        def_pimpinan = df_profil['pimpinan'].values[0] if not df_profil.empty else ""
         def_akta = df_profil['akta_notaris'].values[0] if not df_profil.empty else ""
         def_sk = df_profil['sk_ijin'].values[0] if not df_profil.empty else ""
         
-        nama_pp = st.text_input("Nama Pondok Pesantren", value=def_nama)
-        nspp = st.text_input("Nomor Statistik Pesantren (NSPP)", value=def_nspp)
+        nama_lembaga = st.text_input("Nama Lembaga Pendidikan", value=def_nama)
+        nspp = st.text_input("Nomor Statistik / NSPP / NSQ", value=def_nspp)
         alamat = st.text_area("Alamat Lengkap", value=def_alamat)
-        pengasuh = st.text_input("Nama Pengasuh / Pimpinan", value=def_pengasuh)
+        pimpinan = st.text_input("Nama Pimpinan / Ketua", value=def_pimpinan)
         akta_notaris = st.text_input("Nomor & Tanggal Akta Notaris", value=def_akta, placeholder="Contoh: Akta No. 12 / 15 Januari 2020")
         sk_ijin = st.text_input("Nomor & Tanggal SK Ijin Operasional", value=def_sk, placeholder="Contoh: SK.123/Kemenag/2021 / 10 Mei 2021")
         
         if st.form_submit_button("Simpan / Perbarui Profil"):
-            if nama_pp:
-                run_query("DELETE FROM profil_pesantren")
-                run_query("INSERT INTO profil_pesantren (nama_pp, nspp, alamat, pengasuh, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?)", 
-                          (nama_pp, nspp, alamat, pengasuh, akta_notaris, sk_ijin))
-                st.success("✅ Profil pesantren berhasil diperbarui!")
+            if nama_lembaga:
+                run_query("DELETE FROM profil_lembaga")
+                run_query("INSERT INTO profil_lembaga (nama_lembaga, nspp, alamat, pimpinan, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?)", 
+                          (nama_lembaga, nspp, alamat, pimpinan, akta_notaris, sk_ijin))
+                st.success("✅ Profil lembaga berhasil diperbarui!")
                 st.rerun()
             else:
-                st.warning("Nama Pondok Pesantren wajib diisi.")
+                st.warning("Nama Lembaga Pendidikan wajib diisi.")
 
     if not df_profil.empty:
         st.divider()
@@ -316,9 +316,9 @@ elif menu == "Profil Pesantren":
         p = df_profil.iloc[0]
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown(f"**Nama Pondok Pesantren:**\n{p['nama_pp']}")
-            st.markdown(f"**Nomor Statistik (NSPP):**\n{p['nspp'] if p['nspp'] else '-'}")
-            st.markdown(f"**Pengasuh / Pimpinan:**\n{p['pengasuh'] if p['pengasuh'] else '-'}")
+            st.markdown(f"**Nama Lembaga:**\n{p['nama_lembaga']}")
+            st.markdown(f"**Nomor Statistik:**\n{p['nspp'] if p['nspp'] else '-'}")
+            st.markdown(f"**Pimpinan / Ketua:**\n{p['pimpinan'] if p['pimpinan'] else '-'}")
         with col2:
             st.markdown(f"**Alamat:**\n{p['alamat'] if p['alamat'] else '-'}")
             st.markdown(f"**Akta Notaris:**\n{p['akta_notaris'] if p['akta_notaris'] else '-'}")
@@ -326,14 +326,14 @@ elif menu == "Profil Pesantren":
 
 # 3. SATUAN PENDIDIKAN
 elif menu == "Satuan Pendidikan":
-    st.header("🏫 Manajemen Satuan Pendidikan / Unit Sekolah")
+    st.header("🏫 Manajemen Satuan Pendidikan / Unit Keagamaan")
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
 
     with tab1:
         with st.form("form_satuan", clear_on_submit=True):
             npsn = st.text_input("NPSN / Nomor Induk Satuan (Kosongkan jika non-formal)")
-            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: MTs Darul Huda)")
-            jenjang = st.selectbox("Jenjang Pendidikan", ["RA / TK", "MI / SD", "MTs / SMP", "MA / SMA / SMK", "Madrasah Diniyah", "TPQ / TKA", "Lainnya"])
+            nama_satuan = st.text_input("Nama Satuan (Contoh: TPQ Al-Ikhlas / Madin Darul Ilmi)")
+            jenjang = st.selectbox("Jenjang Pendidikan", ["Madrasah Diniyah Takmiliyah (MDT)", "Taman Pendidikan Al-Qur'an (TPQ)", "Pesantren / LPTQ", "Majelis Taklim", "Lainnya"])
             status = st.selectbox("Status Lembaga", ["Swasta", "Negeri"])
             kepala_sekolah = st.text_input("Nama Kepala / Pimpinan Unit")
             
@@ -374,57 +374,57 @@ elif menu == "Satuan Pendidikan":
     st.subheader("📋 Daftar Unit Satuan Pendidikan")
     st.dataframe(load_data("satuan_pendidikan"), use_container_width=True)
 
-# 4. DATA USTAD
-elif menu == "Data Ustad":
-    st.header("👨‍🏫 Manajemen Data Ustad / Pengajar")
+# 4. DATA PENGAJAR
+elif menu == "Data Pengajar":
+    st.header("👨‍🏫 Manajemen Data Pengajar / Ustadz")
     tab1, tab2, tab3 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel", "✏️ Edit / Hapus Data"])
     
     with tab1:
-        with st.form("form_ustad", clear_on_submit=True):
-            id_ustad = st.text_input("ID Ustad")
+        with st.form("form_pengajar", clear_on_submit=True):
+            id_pengajar = st.text_input("ID Pengajar")
             nama = st.text_input("Nama Lengkap & Gelar")
             bidang = st.text_input("Bidang Pengajaran / Kitab")
             hp = st.text_input("No. HP / WhatsApp")
-            if st.form_submit_button("Simpan Data Ustad"):
-                if id_ustad and nama:
+            if st.form_submit_button("Simpan Data Pengajar"):
+                if id_pengajar and nama:
                     try:
-                        run_query("INSERT INTO ustad VALUES (?, ?, ?, ?)", (id_ustad, nama, bidang, hp))
-                        st.success(f"Data ustad **{nama}** berhasil disimpan!")
+                        run_query("INSERT INTO pengajar VALUES (?, ?, ?, ?)", (id_pengajar, nama, bidang, hp))
+                        st.success(f"Data pengajar **{nama}** berhasil disimpan!")
                         st.rerun()
                     except sqlite3.IntegrityError:
-                        st.error(f"ID Ustad '{id_ustad}' sudah terdaftar.")
+                        st.error(f"ID Pengajar '{id_pengajar}' sudah terdaftar.")
 
     with tab2:
-        st.subheader("Unggah Data Ustad Masal via Excel (.xlsx)")
-        df_template_ustad = pd.DataFrame(columns=["id_ustad", "nama", "bidang_pengajaran", "no_hp"])
-        output_ustad = io.BytesIO()
-        with pd.ExcelWriter(output_ustad, engine='openpyxl') as writer:
-            df_template_ustad.to_excel(writer, sheet_name='Data Ustad', index=False)
-        st.download_button("📥 Unduh Template Excel", data=output_ustad.getvalue(), file_name="template_data_ustad.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.subheader("Unggah Data Pengajar Masal via Excel (.xlsx)")
+        df_template_pengajar = pd.DataFrame(columns=["id_pengajar", "nama", "bidang_pengajaran", "no_hp"])
+        output_pengajar = io.BytesIO()
+        with pd.ExcelWriter(output_pengajar, engine='openpyxl') as writer:
+            df_template_pengajar.to_excel(writer, sheet_name='Data Pengajar', index=False)
+        st.download_button("📥 Unduh Template Excel", data=output_pengajar.getvalue(), file_name="template_data_pengajar.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
-        uploaded_file_ustad = st.file_uploader("Pilih file Excel (.xlsx) data ustad", type=["xlsx"], key="up_ustad")
-        if uploaded_file_ustad is not None:
+        uploaded_file_pengajar = st.file_uploader("Pilih file Excel (.xlsx) data pengajar", type=["xlsx"], key="up_pengajar")
+        if uploaded_file_pengajar is not None:
             try:
-                df_upload_ustad = pd.read_excel(uploaded_file_ustad, engine='openpyxl')
-                if st.button("Proses Impor Ustad"):
+                df_upload_pengajar = pd.read_excel(uploaded_file_pengajar, engine='openpyxl')
+                if st.button("Proses Impor Pengajar"):
                     conn = sqlite3.connect(DB_NAME)
-                    df_upload_ustad.to_sql('ustad', conn, if_exists='append', index=False)
+                    df_upload_pengajar.to_sql('pengajar', conn, if_exists='append', index=False)
                     conn.close()
-                    st.success("✅ Data ustad berhasil diimpor!")
+                    st.success("✅ Data pengajar berhasil diimpor!")
                     st.rerun()
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
 
     with tab3:
-        st.subheader("Pilih Ustad yang Ingin Diedit atau Dihapus")
-        df_ustad_s = load_data("ustad")
-        if not df_ustad_s.empty:
-            pilih_ustad = st.selectbox("Pilih ID & Nama Ustad", options=df_ustad_s['id_ustad'].tolist(), format_func=lambda x: f"{x} - {df_ustad_s.loc[df_ustad_s['id_ustad'] == x, 'nama'].values[0]}")
+        st.subheader("Pilih Pengajar yang Ingin Diedit atau Dihapus")
+        df_pengajar_s = load_data("pengajar")
+        if not df_pengajar_s.empty:
+            pilih_pengajar = st.selectbox("Pilih ID & Nama Pengajar", options=df_pengajar_s['id_pengajar'].tolist(), format_func=lambda x: f"{x} - {df_pengajar_s.loc[df_pengajar_s['id_pengajar'] == x, 'nama'].values[0]}")
             
-            data_terpilih = df_ustad_s[df_ustad_s['id_ustad'] == pilih_ustad].iloc[0]
+            data_terpilih = df_pengajar_s[df_pengajar_s['id_pengajar'] == pilih_pengajar].iloc[0]
             
-            with st.form("form_edit_ustad"):
+            with st.form("form_edit_pengajar"):
                 new_nama = st.text_input("Nama Lengkap & Gelar", value=data_terpilih['nama'])
                 new_bidang = st.text_input("Bidang Pengajaran", value=data_terpilih['bidang_pengajaran'])
                 new_hp = st.text_input("No. HP / WhatsApp", value=data_terpilih['no_hp'])
@@ -434,95 +434,95 @@ elif menu == "Data Ustad":
                 delete_btn = col_e2.form_submit_button("🗑️ Hapus Data", type="primary")
                 
                 if update_btn:
-                    run_query("UPDATE ustad SET nama = ?, bidang_pengajaran = ?, no_hp = ? WHERE id_ustad = ?", (new_nama, new_bidang, new_hp, pilih_ustad))
-                    st.success("✅ Data ustad berhasil diperbarui!")
+                    run_query("UPDATE pengajar SET nama = ?, bidang_pengajaran = ?, no_hp = ? WHERE id_pengajar = ?", (new_nama, new_bidang, new_hp, pilih_pengajar))
+                    st.success("✅ Data pengajar berhasil diperbarui!")
                     st.rerun()
                 elif delete_btn:
-                    run_query("DELETE FROM ustad WHERE id_ustad = ?", (pilih_ustad,))
-                    st.success("🗑️ Data ustad berhasil dihapus!")
+                    run_query("DELETE FROM pengajar WHERE id_pengajar = ?", (pilih_pengajar,))
+                    st.success("🗑️ Data pengajar berhasil dihapus!")
                     st.rerun()
         else:
-            st.info("Belum ada data ustad.")
+            st.info("Belum ada data pengajar.")
 
     st.divider()
-    st.subheader("Daftar Ustad Aktif")
-    st.dataframe(load_data("ustad"), use_container_width=True)
+    st.subheader("Daftar Pengajar Aktif")
+    st.dataframe(load_data("pengajar"), use_container_width=True)
 
-# 5. DATA SANTRI
-elif menu == "Data Santri":
-    st.header("👦👧 Manajemen Data Santri")
+# 5. DATA WARGA BELAJAR
+elif menu == "Data Warga Belajar":
+    st.header("📚 Manajemen Data Warga Belajar / Santri / Siswa")
     tab1, tab2, tab3 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel", "✏️ Edit / Hapus Data"])
     
     with tab1:
-        with st.form("form_santri", clear_on_submit=True):
-            nis = st.text_input("NIS")
+        with st.form("form_warga", clear_on_submit=True):
+            nis = st.text_input("NIS / Nomor Induk")
             nama = st.text_input("Nama Lengkap")
-            kelas = st.text_input("Kelas")
-            kamar = st.text_input("Kamar Asrama")
-            wali = st.text_input("Nama Wali")
-            if st.form_submit_button("Simpan Data Santri"):
+            kelas = st.text_input("Kelas / Tingkat")
+            asrama_kamar = st.text_input("Kamar / Asrama (Opsional)")
+            wali = st.text_input("Nama Orang Tua / Wali")
+            if st.form_submit_button("Simpan Data Warga Belajar"):
                 if nis and nama:
                     try:
-                        run_query("INSERT INTO santri VALUES (?, ?, ?, ?, ?)", (nis, nama, kelas, kamar, wali))
-                        st.success(f"Data santri **{nama}** berhasil disimpan!")
+                        run_query("INSERT INTO warga_belajar VALUES (?, ?, ?, ?, ?)", (nis, nama, kelas, asrama_kamar, wali))
+                        st.success(f"Data warga belajar **{nama}** berhasil disimpan!")
                         st.rerun()
                     except sqlite3.IntegrityError:
                         st.error(f"NIS '{nis}' sudah terdaftar.")
 
     with tab2:
-        st.subheader("Unggah Data Santri Masal via Excel (.xlsx)")
-        df_template_santri = pd.DataFrame(columns=["nis", "nama", "kelas", "kamar", "wali_santri"])
-        output_santri = io.BytesIO()
-        with pd.ExcelWriter(output_santri, engine='openpyxl') as writer:
-            df_template_santri.to_excel(writer, sheet_name='Data Santri', index=False)
-        st.download_button("📥 Unduh Template Excel", data=output_santri.getvalue(), file_name="template_data_santri.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.subheader("Unggah Data Warga Belajar Masal via Excel (.xlsx)")
+        df_template_warga = pd.DataFrame(columns=["nis", "nama", "kelas", "asrama_kamar", "wali_murid"])
+        output_warga = io.BytesIO()
+        with pd.ExcelWriter(output_warga, engine='openpyxl') as writer:
+            df_template_warga.to_excel(writer, sheet_name='Data Warga Belajar', index=False)
+        st.download_button("📥 Unduh Template Excel", data=output_warga.getvalue(), file_name="template_data_warga_belajar.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
-        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) data santri", type=["xlsx"], key="up_santri")
+        uploaded_file = st.file_uploader("Pilih file Excel (.xlsx) data warga belajar", type=["xlsx"], key="up_warga")
         if uploaded_file is not None:
             try:
                 df_upload = pd.read_excel(uploaded_file, engine='openpyxl')
-                if st.button("Proses Impor Santri"):
+                if st.button("Proses Impor Warga Belajar"):
                     conn = sqlite3.connect(DB_NAME)
-                    df_upload.to_sql('santri', conn, if_exists='append', index=False)
+                    df_upload.to_sql('warga_belajar', conn, if_exists='append', index=False)
                     conn.close()
-                    st.success("✅ Data santri berhasil diimpor!")
+                    st.success("✅ Data warga belajar berhasil diimpor!")
                     st.rerun()
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
 
     with tab3:
-        st.subheader("Pilih Santri yang Ingin Diedit atau Dihapus")
-        df_santri_s = load_data("santri")
-        if not df_santri_s.empty:
-            pilih_santri = st.selectbox("Pilih NIS & Nama Santri", options=df_santri_s['nis'].tolist(), format_func=lambda x: f"{x} - {df_santri_s.loc[df_santri_s['nis'] == x, 'nama'].values[0]}")
+        st.subheader("Pilih Warga Belajar yang Ingin Diedit atau Dihapus")
+        df_warga_s = load_data("warga_belajar")
+        if not df_warga_s.empty:
+            pilih_warga = st.selectbox("Pilih NIS & Nama", options=df_warga_s['nis'].tolist(), format_func=lambda x: f"{x} - {df_warga_s.loc[df_warga_s['nis'] == x, 'nama'].values[0]}")
             
-            santri_terpilih = df_santri_s[df_santri_s['nis'] == pilih_santri].iloc[0]
+            warga_terpilih = df_warga_s[df_warga_s['nis'] == pilih_warga].iloc[0]
             
-            with st.form("form_edit_santri"):
-                new_nama_s = st.text_input("Nama Lengkap", value=santri_terpilih['nama'])
-                new_kelas = st.text_input("Kelas", value=santri_terpilih['kelas'])
-                new_kamar = st.text_input("Kamar Asrama", value=santri_terpilih['kamar'])
-                new_wali = st.text_input("Nama Wali Santri", value=santri_terpilih['wali_santri'])
+            with st.form("form_edit_warga"):
+                new_nama_w = st.text_input("Nama Lengkap", value=warga_terpilih['nama'])
+                new_kelas = st.text_input("Kelas / Tingkat", value=warga_terpilih['kelas'])
+                new_kamar = st.text_input("Kamar / Asrama", value=warga_terpilih['asrama_kamar'])
+                new_wali = st.text_input("Nama Orang Tua / Wali", value=warga_terpilih['wali_murid'])
                 
-                col_s1, col_s2 = st.columns(2)
-                update_s_btn = col_s1.form_submit_button("💾 Perbarui Data")
-                delete_s_btn = col_s2.form_submit_button("🗑️ Hapus Data", type="primary")
+                col_w1, col_w2 = st.columns(2)
+                update_w_btn = col_w1.form_submit_button("💾 Perbarui Data")
+                delete_w_btn = col_w2.form_submit_button("🗑️ Hapus Data", type="primary")
                 
-                if update_s_btn:
-                    run_query("UPDATE santri SET nama = ?, kelas = ?, kamar = ?, wali_santri = ? WHERE nis = ?", (new_nama_s, new_kelas, new_kamar, new_wali, pilih_santri))
-                    st.success("✅ Data santri berhasil diperbarui!")
+                if update_w_btn:
+                    run_query("UPDATE warga_belajar SET nama = ?, kelas = ?, asrama_kamar = ?, wali_murid = ? WHERE nis = ?", (new_nama_w, new_kelas, new_kamar, new_wali, pilih_warga))
+                    st.success("✅ Data warga belajar berhasil diperbarui!")
                     st.rerun()
-                elif delete_s_btn:
-                    run_query("DELETE FROM santri WHERE nis = ?", (pilih_santri,))
-                    st.success("🗑️ Data santri berhasil dihapus!")
+                elif delete_w_btn:
+                    run_query("DELETE FROM warga_belajar WHERE nis = ?", (pilih_warga,))
+                    st.success("🗑️ Data warga belajar berhasil dihapus!")
                     st.rerun()
         else:
-            st.info("Belum ada data santri.")
+            st.info("Belum ada data warga belajar.")
 
     st.divider()
-    st.subheader("Daftar Santri Aktif")
-    st.dataframe(load_data("santri"), use_container_width=True)
+    st.subheader("Daftar Warga Belajar Aktif")
+    st.dataframe(load_data("warga_belajar"), use_container_width=True)
 
 # 6. DATA SARPRAS
 elif menu == "Data Sarpras":
@@ -546,16 +546,16 @@ elif menu == "Data Sarpras":
 
 # 6.5 GALERI & DOKUMENTASI FOTO
 elif menu == "📸 Galeri & Dokumentasi":
-    st.header("📸 Galeri & Dokumentasi Visual Pesantren")
+    st.header("📸 Galeri & Dokumentasi Visual Lembaga")
     tab1, tab2 = st.tabs(["➕ Unggah Foto Baru", "🖼️ Lihat & Kelola Galeri"])
     
     with tab1:
         with st.form("form_galeri", clear_on_submit=True):
             kategori = st.selectbox("Pilih Kategori Foto", [
-                "Papan Nama Pesantren", 
-                "Foto Asrama", 
-                "Foto Ruang Belajar", 
-                "Foto Kegiatan KBM"
+                "Papan Nama Lembaga", 
+                "Gedung / Asrama", 
+                "Ruang Belajar / Kelas", 
+                "Kegiatan Pembelajaran KBM"
             ])
             keterangan = st.text_input("Keterangan / Deskripsi Foto")
             file_foto = st.file_uploader("Pilih Berkas Foto", type=["jpg", "jpeg", "png"])
@@ -582,7 +582,7 @@ elif menu == "📸 Galeri & Dokumentasi":
         conn.close()
         
         if not df_galeri.empty:
-            filter_kat = st.selectbox("Filter Kategori", ["Semua Kategori", "Papan Nama Pesantren", "Foto Asrama", "Foto Ruang Belajar", "Foto Kegiatan KBM"])
+            filter_kat = st.selectbox("Filter Kategori", ["Semua Kategori", "Papan Nama Lembaga", "Gedung / Asrama", "Ruang Belajar / Kelas", "Kegiatan Pembelajaran KBM"])
             
             if filter_kat != "Semua Kategori":
                 df_tampil = df_galeri[df_galeri['kategori'] == filter_kat]
@@ -615,18 +615,18 @@ elif menu == "📸 Galeri & Dokumentasi":
 # 7. CETAK PORTOFOLIO WORD
 elif menu == "📄 Cetak Portofolio Word":
     st.header("📄 Cetak Portofolio Lembaga (.docx)")
-    st.write("Unduh rangkuman seluruh data pesantren per lembaga dalam bentuk dokumen Word yang rapi dan siap dicetak.")
+    st.write("Unduh rangkuman seluruh data lembaga keagamaan islam dalam bentuk dokumen Word yang rapi dan siap dicetak.")
     st.divider()
     
-    df_profil = load_data("profil_pesantren")
-    nama_pp = df_profil['nama_pp'].values[0] if not df_profil.empty else "Pesantren"
+    df_profil = load_data("profil_lembaga")
+    nama_lembaga = df_profil['nama_lembaga'].values[0] if not df_profil.empty else "Lembaga"
     
     doc_file = generate_word_portfolio()
     
     st.download_button(
         label="📥 Download Portofolio Word (.docx)",
         data=doc_file,
-        file_name=f"Portofolio_{nama_pp.replace(' ', '_')}.docx",
+        file_name=f"Portofolio_{nama_lembaga.replace(' ', '_')}.docx",
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         type="primary"
     )
