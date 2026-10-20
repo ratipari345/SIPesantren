@@ -18,6 +18,8 @@ if not os.path.exists(UPLOAD_DIR):
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
+    
+    # 1. Buat tabel profil_lembaga jika belum ada sama sekali
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS profil_lembaga (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,6 +32,29 @@ def init_db():
             sk_ijin TEXT
         )
     ''')
+    
+    # 2. Migrasi otomatis: Cek dan tambahkan kolom jika tabel lama kurang lengkap
+    cursor.execute("PRAGMA table_info(profil_lembaga)")
+    columns = [col[1] for col in cursor.fetchall()]
+    
+    kolom_yang_dibutuhkan = {
+        'nama_lembaga': 'TEXT',
+        'nspp': 'TEXT',
+        'jenis_lembaga': 'TEXT',
+        'alamat': 'TEXT',
+        'pimpinan': 'TEXT',
+        'akta_notaris': 'TEXT',
+        'sk_ijin': 'TEXT'
+    }
+    
+    for col_name, col_type in kolom_yang_dibutuhkan.items():
+        if col_name not in columns:
+            try:
+                cursor.execute(f"ALTER TABLE profil_lembaga ADD COLUMN {col_name} {col_type}")
+            except sqlite3.OperationalError:
+                pass
+
+    # 3. Tabel lainnya
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS satuan_pendidikan (
             npsn TEXT PRIMARY KEY,
@@ -335,13 +360,13 @@ elif menu == "Satuan Pendidikan":
     with tab1:
         with st.form("form_satuan", clear_on_submit=True):
             npsn = st.text_input("NPSN / Nomor Induk Satuan")
-            nama_satuan = st.text_input("Nama Satuan Pendidikan")
+            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: RA Perwanida / MI Al-Hidayah / MTs Negeri 1 / MA Al-Ihsan / STAI Darussalam)")
             jenjang = st.selectbox("Jenjang Pendidikan Formal", [
                 "TK / RA", 
                 "SD / MI", 
                 "SMP / MTs", 
                 "SMA / SMK / MA", 
-                "Perguruan Tinggi"
+                "Perguruan Tinggi (Sekolah Tinggi / Institut / Universitas)"
             ])
             status = st.selectbox("Status Lembaga", ["Swasta", "Negeri"])
             kepala_sekolah = st.text_input("Nama Kepala / Pimpinan Unit")
@@ -392,7 +417,7 @@ elif menu == "Data Pengajar":
         with st.form("form_pengajar", clear_on_submit=True):
             id_pengajar = st.text_input("ID Pengajar")
             nama = st.text_input("Nama Lengkap & Gelar")
-            bidang = st.text_input("Bidang Pengajaran")
+            bidang = st.text_input("Bidang Pengajaran / Mata Pelajaran")
             hp = st.text_input("No. HP / WhatsApp")
             if st.form_submit_button("Simpan Data Pengajar"):
                 if id_pengajar and nama:
