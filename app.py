@@ -188,31 +188,46 @@ st.markdown("""
     /* Latar belakang halaman utama */
     .stApp {
         background-color: #f0f7f4;
+        color: #000000 !important;
     }
-    /* Latar belakang sidebar */
+    
+    /* Memaksa teks di area utama berwarna HITAM */
+    .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp div {
+        color: #000000 !important;
+    }
+
+    /* Mengubah latar belakang sidebar */
     [data-testid="stSidebar"] {
-        background-color: #1b4d3e;
+        background-color: #1b4d3e !important;
     }
-    /* Warna teks di sidebar */
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stRadio div {
+    
+    /* Menjaga teks di dalam sidebar tetap PUTIH */
+    [data-testid="stSidebar"] p, 
+    [data-testid="stSidebar"] span, 
+    [data-testid="stSidebar"] label, 
+    [data-testid="stSidebar"] h1, 
+    [data-testid="stSidebar"] h2, 
+    [data-testid="stSidebar"] h3 {
         color: #ffffff !important;
     }
-    /* Desain tombol utama */
+
+    /* Kustomisasi tombol utama */
     .stButton>button[kind="primary"] {
-        background-color: #2d6a4f;
-        color: white;
+        background-color: #2d6a4f !important;
+        color: #ffffff !important;
         border-radius: 8px;
     }
     .stButton>button[kind="primary"]:hover {
-        background-color: #1b4d3e;
+        background-color: #1b4d3e !important;
     }
-    /* Kartu form */
+    
+    /* Kartu / Kotak Form Input */
     div.stForm {
         background-color: #ffffff;
         padding: 20px;
         border-radius: 10px;
-        border: 1px solid #d8f3dc;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        border: 1px solid #2d6a4f;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
     }
     </style>
 """, unsafe_allow_html=True)
