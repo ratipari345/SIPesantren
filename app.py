@@ -180,8 +180,42 @@ def generate_word_portfolio():
     bio.seek(0)
     return bio
 
-# --- TAMPILAN APLIKASI STREAMLIT ---
+# --- TAMPILAN APLIKASI STREAMLIT & TEMA HIJAU KHAS PESANTREN ---
 st.set_page_config(page_title="SIM Pondok Pesantren", page_icon="🏫", layout="wide")
+
+st.markdown("""
+    <style>
+    /* Latar belakang halaman utama */
+    .stApp {
+        background-color: #f0f7f4;
+    }
+    /* Latar belakang sidebar */
+    [data-testid="stSidebar"] {
+        background-color: #1b4d3e;
+    }
+    /* Warna teks di sidebar */
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] label, [data-testid="stSidebar"] .stRadio div {
+        color: #ffffff !important;
+    }
+    /* Desain tombol utama */
+    .stButton>button[kind="primary"] {
+        background-color: #2d6a4f;
+        color: white;
+        border-radius: 8px;
+    }
+    .stButton>button[kind="primary"]:hover {
+        background-color: #1b4d3e;
+    }
+    /* Kartu form */
+    div.stForm {
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #d8f3dc;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 st.sidebar.title("🏫 SIM Pesantren")
 menu = st.sidebar.selectbox("Pilih Menu", [
