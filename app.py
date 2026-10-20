@@ -294,7 +294,7 @@ elif menu == "Profil Lembaga":
         def_sk = df_profil['sk_ijin'].values[0] if not df_profil.empty else ""
         
         nama_lembaga = st.text_input("Nama Lembaga Pendidikan", value=def_nama)
-        nspp = st.text_input("Nomor Statistik / NSPP / NSQ", value=def_nspp)
+        nspp = st.text_input("Nomor Statistik", value=def_nspp)
         alamat = st.text_area("Alamat Lengkap", value=def_alamat)
         pimpinan = st.text_input("Nama Pimpinan / Ketua", value=def_pimpinan)
         akta_notaris = st.text_input("Nomor & Tanggal Akta Notaris", value=def_akta, placeholder="Contoh: Akta No. 12 / 15 Januari 2020")
