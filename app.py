@@ -23,6 +23,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             nama_lembaga TEXT,
             nspp TEXT,
+            jenis_lembaga TEXT,
             alamat TEXT,
             pimpinan TEXT,
             akta_notaris TEXT,
@@ -110,7 +111,8 @@ def generate_word_portfolio():
     if not df_profil.empty:
         p = df_profil.iloc[0]
         doc.add_paragraph(f"Nama Lembaga: {p['nama_lembaga']}")
-        doc.add_paragraph(f"NSPP: {p['nspp'] if p['nspp'] else '-'}")
+        doc.add_paragraph(f"NSPP / Nomor Statistik: {p['nspp'] if p['nspp'] else '-'}")
+        doc.add_paragraph(f"Jenis Lembaga: {p['jenis_lembaga'] if p['jenis_lembaga'] else '-'}")
         doc.add_paragraph(f"Pimpinan / Ketua: {p['pimpinan'] if p['pimpinan'] else '-'}")
         doc.add_paragraph(f"Alamat: {p['alamat'] if p['alamat'] else '-'}")
         doc.add_paragraph(f"Akta Notaris: {p['akta_notaris'] if p['akta_notaris'] else '-'}")
@@ -119,13 +121,13 @@ def generate_word_portfolio():
         doc.add_paragraph("Belum ada data profil lembaga.")
 
     # 2. Satuan Pendidikan
-    doc.add_heading("2. Satuan Pendidikan / Unit Keagamaan", level=1)
+    doc.add_heading("2. Satuan Pendidikan Formal (TK/RA s.d Perguruan Tinggi)", level=1)
     df_satuan = load_data("satuan_pendidikan")
     if not df_satuan.empty:
         table = doc.add_table(rows=1, cols=5)
         table.style = 'Table Grid'
         hdr = table.rows[0].cells
-        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NPSN', 'Nama Satuan', 'Jenjang', 'Status', 'Kepala Sekolah'
+        hdr[0].text, hdr[1].text, hdr[2].text, hdr[3].text, hdr[4].text = 'NPSN', 'Nama Satuan', 'Jenjang', 'Status', 'Kepala / Pimpinan'
         for _, row in df_satuan.iterrows():
             r = table.add_row().cells
             r[0].text, r[1].text, r[2].text, r[3].text, r[4].text = str(row['npsn']), str(row['nama_satuan']), str(row['jenjang']), str(row['status']), str(row['kepala_sekolah'])
@@ -288,23 +290,29 @@ elif menu == "Profil Lembaga":
         st.subheader("Perbarui Informasi Lembaga")
         def_nama = df_profil['nama_lembaga'].values[0] if not df_profil.empty else ""
         def_nspp = df_profil['nspp'].values[0] if not df_profil.empty else ""
+        def_jenis = df_profil['jenis_lembaga'].values[0] if not df_profil.empty else "Pesantren"
         def_alamat = df_profil['alamat'].values[0] if not df_profil.empty else ""
         def_pimpinan = df_profil['pimpinan'].values[0] if not df_profil.empty else ""
         def_akta = df_profil['akta_notaris'].values[0] if not df_profil.empty else ""
         def_sk = df_profil['sk_ijin'].values[0] if not df_profil.empty else ""
         
+        # Penentuan index pilihan jenis lembaga agar tetap sesuai data tersimpan
+        opsi_jenis = ["Pesantren", "Madrasah Diniyah", "TPQ", "RTQ", "TQA", "PAUDQu"]
+        idx_jenis = opsi_jenis.index(def_jenis) if def_jenis in opsi_jenis else 0
+        
         nama_lembaga = st.text_input("Nama Lembaga Pendidikan", value=def_nama)
-        nspp = st.text_input("Nomor Statistik", value=def_nspp)
+        nspp = st.text_input("Nomor Statistik / NSPP", value=def_nspp)
+        jenis_lembaga = st.selectbox("Jenis Lembaga", options=opsi_jenis, index=idx_jenis)
         alamat = st.text_area("Alamat Lengkap", value=def_alamat)
         pimpinan = st.text_input("Nama Pimpinan / Ketua", value=def_pimpinan)
         akta_notaris = st.text_input("Nomor & Tanggal Akta Notaris", value=def_akta, placeholder="Contoh: Akta No. 12 / 15 Januari 2020")
-        sk_ijin = st.text_input("Nomor & Tanggal SK Ijin Operasional", value=def_sk, placeholder="Contoh: SK.123/Kemenag/2021 / 10 Mei 2021")
+        sk_ijin = st.text_input("Nomor & Tanggal SK Izin Operasional", value=def_sk, placeholder="Contoh: SK.123/Kemenag/2021 / 10 Mei 2021")
         
         if st.form_submit_button("Simpan / Perbarui Profil"):
             if nama_lembaga:
                 run_query("DELETE FROM profil_lembaga")
-                run_query("INSERT INTO profil_lembaga (nama_lembaga, nspp, alamat, pimpinan, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?)", 
-                          (nama_lembaga, nspp, alamat, pimpinan, akta_notaris, sk_ijin))
+                run_query("INSERT INTO profil_lembaga (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                          (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin))
                 st.success("✅ Profil lembaga berhasil diperbarui!")
                 st.rerun()
             else:
@@ -318,35 +326,42 @@ elif menu == "Profil Lembaga":
         with col1:
             st.markdown(f"**Nama Lembaga:**\n{p['nama_lembaga']}")
             st.markdown(f"**Nomor Statistik:**\n{p['nspp'] if p['nspp'] else '-'}")
+            st.markdown(f"**Jenis Lembaga:**\n{p['jenis_lembaga'] if p['jenis_lembaga'] else '-'}")
             st.markdown(f"**Pimpinan / Ketua:**\n{p['pimpinan'] if p['pimpinan'] else '-'}")
         with col2:
             st.markdown(f"**Alamat:**\n{p['alamat'] if p['alamat'] else '-'}")
             st.markdown(f"**Akta Notaris:**\n{p['akta_notaris'] if p['akta_notaris'] else '-'}")
-            st.markdown(f"**SK Ijin Operasional:**\n{p['sk_ijin'] if p['sk_ijin'] else '-'}")
+            st.markdown(f"**SK Izin Operasional:**\n{p['sk_ijin'] if p['sk_ijin'] else '-'}")
 
 # 3. SATUAN PENDIDIKAN
 elif menu == "Satuan Pendidikan":
-    st.header("🏫 Manajemen Satuan Pendidikan / Unit Keagamaan")
+    st.header("🏫 Manajemen Satuan Pendidikan Formal")
     tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
 
     with tab1:
         with st.form("form_satuan", clear_on_submit=True):
-            npsn = st.text_input("NPSN / Nomor Induk Satuan (Kosongkan jika non-formal)")
-            nama_satuan = st.text_input("Nama Satuan (Contoh: TPQ Al-Ikhlas / Madin Darul Ilmi)")
-            jenjang = st.selectbox("Jenjang Pendidikan", ["Madrasah Diniyah Takmiliyah (MDT)", "Taman Pendidikan Al-Qur'an (TPQ)", "Pesantren / LPTQ", "Majelis Taklim", "Lainnya"])
+            npsn = st.text_input("NPSN / Nomor Induk Satuan")
+            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: RA Perwanida / MI Al-Hidayah / MTs Negeri 1 / MA Al-Ihsan / STAI Darussalam)")
+            jenjang = st.selectbox("Jenjang Pendidikan Formal", [
+                "TK / RA", 
+                "SD / MI", 
+                "SMP / MTs", 
+                "SMA / SMK / MA", 
+                "Perguruan Tinggi (Sekolah Tinggi / Institut / Universitas)"
+            ])
             status = st.selectbox("Status Lembaga", ["Swasta", "Negeri"])
             kepala_sekolah = st.text_input("Nama Kepala / Pimpinan Unit")
             
             if st.form_submit_button("Simpan Satuan Pendidikan"):
-                if nama_satuan:
-                    if not npsn:
-                        npsn = f"NON-{int(time.time())}"
+                if nama_satuan and npsn:
                     try:
                         run_query("INSERT INTO satuan_pendidikan VALUES (?, ?, ?, ?, ?)", (npsn, nama_satuan, jenjang, status, kepala_sekolah))
                         st.success(f"Satuan pendidikan **{nama_satuan}** berhasil disimpan!")
                         st.rerun()
                     except sqlite3.IntegrityError:
                         st.error(f"NPSN '{npsn}' sudah terdaftar.")
+                else:
+                    st.warning("NPSN dan Nama Satuan wajib diisi.")
 
     with tab2:
         st.subheader("Unggah Data Satuan Pendidikan via Excel (.xlsx)")
@@ -354,7 +369,7 @@ elif menu == "Satuan Pendidikan":
         output_satuan = io.BytesIO()
         with pd.ExcelWriter(output_satuan, engine='openpyxl') as writer:
             df_template_satuan.to_excel(writer, sheet_name='Satuan Pendidikan', index=False)
-        st.download_button("📥 Unduh Template Excel", data=output_satuan.getvalue(), file_name="template_satuan_pendidikan.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button("📥 Unduh Template Excel", data=output_satuan.getvalue(), file_name="template_data_satuan.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         
         st.divider()
         uploaded_file_satuan = st.file_uploader("Pilih file Excel (.xlsx)", type=["xlsx"], key="up_satuan")
@@ -371,7 +386,7 @@ elif menu == "Satuan Pendidikan":
                 st.error(f"Terjadi kesalahan: {e}")
 
     st.divider()
-    st.subheader("📋 Daftar Unit Satuan Pendidikan")
+    st.subheader("📋 Daftar Unit Satuan Pendidikan Formal")
     st.dataframe(load_data("satuan_pendidikan"), use_container_width=True)
 
 # 4. DATA PENGAJAR
@@ -383,7 +398,7 @@ elif menu == "Data Pengajar":
         with st.form("form_pengajar", clear_on_submit=True):
             id_pengajar = st.text_input("ID Pengajar")
             nama = st.text_input("Nama Lengkap & Gelar")
-            bidang = st.text_input("Bidang Pengajaran / Kitab")
+            bidang = st.text_input("Bidang Pengajaran / Mata Pelajaran")
             hp = st.text_input("No. HP / WhatsApp")
             if st.form_submit_button("Simpan Data Pengajar"):
                 if id_pengajar and nama:
