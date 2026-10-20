@@ -187,30 +187,25 @@ st.set_page_config(page_title="SIM Lembaga Pendidikan Keagamaan Islam", page_ico
 
 st.markdown("""
     <style>
-    /* Latar belakang halaman utama */
     .stApp {
         background-color: #f0f7f4;
         color: #000000 !important;
     }
     
-    /* Memaksa teks di area utama berwarna HITAM */
     .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp h4, .stApp div {
         color: #000000 !important;
     }
 
-    /* Kotak input berwarna abu-abu terang */
     .stTextInput input, .stTextArea textarea, .stSelectbox select, .stNumberInput input {
         color: #000000 !important;
         background-color: #e2e8f0 !important;
         border: 1px solid #cbd5e1 !important;
     }
 
-    /* Mengubah latar belakang sidebar menjadi hijau tua */
     [data-testid="stSidebar"] {
         background-color: #1b4d3e !important;
     }
     
-    /* Menjaga teks di dalam sidebar tetap PUTIH */
     [data-testid="stSidebar"] p, 
     [data-testid="stSidebar"] span, 
     [data-testid="stSidebar"] label, 
@@ -220,7 +215,6 @@ st.markdown("""
         color: #ffffff !important;
     }
 
-    /* Mengubah SEMUA TOMBOL (termasuk tombol Simpan) menjadi WARNA BIRU */
     .stButton > button {
         background-color: #2563eb !important;
         color: #ffffff !important;
@@ -231,7 +225,6 @@ st.markdown("""
         background-color: #1d4ed8 !important;
     }
     
-    /* Kartu / Kotak Form Input */
     div.stForm {
         background-color: #ffffff;
         padding: 20px;
@@ -296,7 +289,6 @@ elif menu == "Profil Lembaga":
         def_akta = df_profil['akta_notaris'].values[0] if not df_profil.empty else ""
         def_sk = df_profil['sk_ijin'].values[0] if not df_profil.empty else ""
         
-        # Penentuan index pilihan jenis lembaga agar tetap sesuai data tersimpan
         opsi_jenis = ["Pesantren", "Madrasah Diniyah", "TPQ", "RTQ", "TQA", "PAUDQu"]
         idx_jenis = opsi_jenis.index(def_jenis) if def_jenis in opsi_jenis else 0
         
@@ -311,8 +303,10 @@ elif menu == "Profil Lembaga":
         if st.form_submit_button("Simpan / Perbarui Profil"):
             if nama_lembaga:
                 run_query("DELETE FROM profil_lembaga")
-                run_query("INSERT INTO profil_lembaga (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-                          (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin))
+                run_query(
+                    "INSERT INTO profil_lembaga (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                    (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin)
+                )
                 st.success("✅ Profil lembaga berhasil diperbarui!")
                 st.rerun()
             else:
@@ -341,13 +335,13 @@ elif menu == "Satuan Pendidikan":
     with tab1:
         with st.form("form_satuan", clear_on_submit=True):
             npsn = st.text_input("NPSN / Nomor Induk Satuan")
-            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: RA Perwanida / MI Al-Hidayah / MTs Negeri 1 / MA Al-Ihsan / STAI Darussalam)")
+            nama_satuan = st.text_input("Nama Satuan Pendidikan")
             jenjang = st.selectbox("Jenjang Pendidikan Formal", [
                 "TK / RA", 
                 "SD / MI", 
                 "SMP / MTs", 
                 "SMA / SMK / MA", 
-                "Perguruan Tinggi (Sekolah Tinggi / Institut / Universitas)"
+                "Perguruan Tinggi"
             ])
             status = st.selectbox("Status Lembaga", ["Swasta", "Negeri"])
             kepala_sekolah = st.text_input("Nama Kepala / Pimpinan Unit")
@@ -398,7 +392,7 @@ elif menu == "Data Pengajar":
         with st.form("form_pengajar", clear_on_submit=True):
             id_pengajar = st.text_input("ID Pengajar")
             nama = st.text_input("Nama Lengkap & Gelar")
-            bidang = st.text_input("Bidang Pengajaran / Mata Pelajaran")
+            bidang = st.text_input("Bidang Pengajaran")
             hp = st.text_input("No. HP / WhatsApp")
             if st.form_submit_button("Simpan Data Pengajar"):
                 if id_pengajar and nama:
