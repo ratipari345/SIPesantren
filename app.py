@@ -1,3 +1,8 @@
+Berikut adalah versi lengkap dan terbaru dari aplikasi Anda. Sekarang semua menu utama (Profil Lembaga, Satuan Pendidikan, Data Pengajar, Data Santri, Data Sarpras, dan Galeri Foto) sudah dilengkapi dengan fitur Edit dan Hapus Data.
+
+Silakan salin seluruh kode di bawah ini dan tempelkan ke file app.py Anda:
+
+Python
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -304,42 +309,56 @@ elif menu == "Profil Lembaga":
     df_profil = pd.read_sql_query("SELECT * FROM profil_lembaga ORDER BY id DESC LIMIT 1", conn)
     conn.close()
     
-    with st.form("form_profil"):
-        st.subheader("Perbarui Informasi Lembaga")
-        def_nama = df_profil['nama_lembaga'].values[0] if not df_profil.empty else ""
-        def_nspp = df_profil['nspp'].values[0] if not df_profil.empty else ""
-        def_jenis = df_profil['jenis_lembaga'].values[0] if not df_profil.empty else "Pesantren"
-        def_alamat = df_profil['alamat'].values[0] if not df_profil.empty else ""
-        def_pimpinan = df_profil['pimpinan'].values[0] if not df_profil.empty else ""
-        def_akta = df_profil['akta_notaris'].values[0] if not df_profil.empty else ""
-        def_sk = df_profil['sk_ijin'].values[0] if not df_profil.empty else ""
-        
-        opsi_jenis = ["Pesantren", "Madrasah Diniyah", "TPQ", "RTQ", "TQA", "PAUDQu"]
-        idx_jenis = opsi_jenis.index(def_jenis) if def_jenis in opsi_jenis else 0
-        
-        nama_lembaga = st.text_input("Nama Lembaga Pendidikan", value=def_nama)
-        nspp = st.text_input("Nomor Statistik / NSPP", value=def_nspp)
-        jenis_lembaga = st.selectbox("Jenis Lembaga", options=opsi_jenis, index=idx_jenis)
-        alamat = st.text_area("Alamat Lengkap", value=def_alamat)
-        pimpinan = st.text_input("Nama Pimpinan / Ketua", value=def_pimpinan)
-        akta_notaris = st.text_input("Nomor & Tanggal Akta Notaris", value=def_akta, placeholder="Contoh: Akta No. 12 / 15 Januari 2020")
-        sk_ijin = st.text_input("Nomor & Tanggal SK Izin Operasional", value=def_sk, placeholder="Contoh: SK.123/Kemenag/2021 / 10 Mei 2021")
-        
-        if st.form_submit_button("Simpan / Perbarui Profil"):
-            if nama_lembaga:
+    tab1, tab2 = st.tabs(["✏️ Input / Perbarui Profil", "🗑️ Hapus Data Profil"])
+    
+    with tab1:
+        with st.form("form_profil"):
+            st.subheader("Informasi Lembaga")
+            def_nama = df_profil['nama_lembaga'].values[0] if not df_profil.empty else ""
+            def_nspp = df_profil['nspp'].values[0] if not df_profil.empty else ""
+            def_jenis = df_profil['jenis_lembaga'].values[0] if not df_profil.empty else "Pesantren"
+            def_alamat = df_profil['alamat'].values[0] if not df_profil.empty else ""
+            def_pimpinan = df_profil['pimpinan'].values[0] if not df_profil.empty else ""
+            def_akta = df_profil['akta_notaris'].values[0] if not df_profil.empty else ""
+            def_sk = df_profil['sk_ijin'].values[0] if not df_profil.empty else ""
+            
+            opsi_jenis = ["Pesantren", "Madrasah Diniyah", "TPQ", "RTQ", "TQA", "PAUDQu"]
+            idx_jenis = opsi_jenis.index(def_jenis) if def_jenis in opsi_jenis else 0
+            
+            nama_lembaga = st.text_input("Nama Lembaga Pendidikan", value=def_nama)
+            nspp = st.text_input("Nomor Statistik / NSPP", value=def_nspp)
+            jenis_lembaga = st.selectbox("Jenis Lembaga", options=opsi_jenis, index=idx_jenis)
+            alamat = st.text_area("Alamat Lengkap", value=def_alamat)
+            pimpinan = st.text_input("Nama Pimpinan / Ketua", value=def_pimpinan)
+            akta_notaris = st.text_input("Nomor & Tanggal Akta Notaris", value=def_akta, placeholder="Contoh: Akta No. 12 / 15 Januari 2020")
+            sk_ijin = st.text_input("Nomor & Tanggal SK Izin Operasional", value=def_sk, placeholder="Contoh: SK.123/Kemenag/2021 / 10 Mei 2021")
+            
+            if st.form_submit_button("Simpan / Perbarui Profil"):
+                if nama_lembaga:
+                    run_query("DELETE FROM profil_lembaga")
+                    run_query(
+                        "INSERT INTO profil_lembaga (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                        (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin)
+                    )
+                    st.success("✅ Profil lembaga berhasil diperbarui!")
+                    st.rerun()
+                else:
+                    st.warning("Nama Lembaga Pendidikan wajib diisi.")
+
+    with tab2:
+        st.subheader("Hapus Data Profil Lembaga")
+        if not df_profil.empty:
+            st.warning("Menghapus profil akan mengosongkan informasi resmi lembaga.")
+            if st.button("🗑️ Hapus Profil Lembaga", type="primary"):
                 run_query("DELETE FROM profil_lembaga")
-                run_query(
-                    "INSERT INTO profil_lembaga (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin) VALUES (?, ?, ?, ?, ?, ?, ?)", 
-                    (nama_lembaga, nspp, jenis_lembaga, alamat, pimpinan, akta_notaris, sk_ijin)
-                )
-                st.success("✅ Profil lembaga berhasil diperbarui!")
+                st.success("🗑️ Data profil lembaga berhasil dihapus!")
                 st.rerun()
-            else:
-                st.warning("Nama Lembaga Pendidikan wajib diisi.")
+        else:
+            st.info("Belum ada data profil yang tersimpan.")
 
     if not df_profil.empty:
         st.divider()
-        st.subheader("📄 Informasi Resmi Lembaga")
+        st.subheader("📄 Informasi Resmi Lembaga Saat Ini")
         p = df_profil.iloc[0]
         col1, col2 = st.columns(2)
         with col1:
@@ -355,12 +374,12 @@ elif menu == "Profil Lembaga":
 # 3. SATUAN PENDIDIKAN
 elif menu == "Satuan Pendidikan":
     st.header("🏫 Manajemen Satuan Pendidikan Formal")
-    tab1, tab2 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel"])
+    tab1, tab2, tab3 = st.tabs(["➕ Input Manual", "📁 Impor dari Excel", "✏️ Edit / Hapus Data"])
 
     with tab1:
         with st.form("form_satuan", clear_on_submit=True):
             npsn = st.text_input("NPSN / Nomor Induk Satuan")
-            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: RA Perwanida / MI Al-Hidayah / MTs Negeri 1 / MA Al-Ihsan / STAI Darussalam)")
+            nama_satuan = st.text_input("Nama Satuan Pendidikan (Contoh: RA Perwanida / MI Al-Hidayah / MTs Negeri 1)")
             jenjang = st.selectbox("Jenjang Pendidikan Formal", [
                 "TK / RA", 
                 "SD / MI", 
@@ -403,6 +422,54 @@ elif menu == "Satuan Pendidikan":
                     st.rerun()
             except Exception as e:
                 st.error(f"Terjadi kesalahan: {e}")
+
+    with tab3:
+        st.subheader("Pilih Satuan Pendidikan yang Ingin Diedit atau Dihapus")
+        df_satuan_s = load_data("satuan_pendidikan")
+        if not df_satuan_s.empty:
+            pilih_npsn = st.selectbox(
+                "Pilih NPSN & Nama Satuan", 
+                options=df_satuan_s['npsn'].tolist(), 
+                format_func=lambda x: f"{x} - {df_satuan_s.loc[df_satuan_s['npsn'] == x, 'nama_satuan'].values[0]}"
+            )
+            
+            satuan_terpilih = df_satuan_s[df_satuan_s['npsn'] == pilih_npsn].iloc[0]
+            
+            opsi_jenjang = [
+                "TK / RA", 
+                "SD / MI", 
+                "SMP / MTs", 
+                "SMA / SMK / MA", 
+                "Perguruan Tinggi (Sekolah Tinggi / Institut / Universitas)"
+            ]
+            idx_j = opsi_jenjang.index(satuan_terpilih['jenjang']) if satuan_terpilih['jenjang'] in opsi_jenjang else 0
+
+            opsi_status = ["Swasta", "Negeri"]
+            idx_s = opsi_status.index(satuan_terpilih['status']) if satuan_terpilih['status'] in opsi_status else 0
+
+            with st.form("form_edit_satuan"):
+                new_nama_satuan = st.text_input("Nama Satuan Pendidikan", value=satuan_terpilih['nama_satuan'])
+                new_jenjang = st.selectbox("Jenjang Pendidikan Formal", options=opsi_jenjang, index=idx_j)
+                new_status = st.selectbox("Status Lembaga", options=opsi_status, index=idx_s)
+                new_kepala = st.text_input("Nama Kepala / Pimpinan Unit", value=satuan_terpilih['kepala_sekolah'])
+                
+                col_st1, col_st2 = st.columns(2)
+                update_st_btn = col_st1.form_submit_button("💾 Perbarui Data")
+                delete_st_btn = col_st2.form_submit_button("🗑️ Hapus Data", type="primary")
+                
+                if update_st_btn:
+                    run_query(
+                        "UPDATE satuan_pendidikan SET nama_satuan = ?, jenjang = ?, status = ?, kepala_sekolah = ? WHERE npsn = ?", 
+                        (new_nama_satuan, new_jenjang, new_status, new_kepala, pilih_npsn)
+                    )
+                    st.success("✅ Data satuan pendidikan berhasil diperbarui!")
+                    st.rerun()
+                elif delete_st_btn:
+                    run_query("DELETE FROM satuan_pendidikan WHERE npsn = ?", (pilih_npsn,))
+                    st.success("🗑️ Data satuan pendidikan berhasil dihapus!")
+                    st.rerun()
+        else:
+            st.info("Belum ada data satuan pendidikan.")
 
     st.divider()
     st.subheader("📋 Daftar Unit Satuan Pendidikan Formal")
@@ -561,27 +628,69 @@ elif menu == "Data Santri":
 # 6. DATA SARPRAS
 elif menu == "Data Sarpras":
     st.header("🏢 Manajemen Sarana & Prasarana")
-    with st.form("form_sarpras", clear_on_submit=True):
-        kode = st.text_input("Kode Barang")
-        nama_brg = st.text_input("Nama Barang")
-        kondisi = st.selectbox("Kondisi", ["Baik", "Rusak Ringan", "Rusak Berat"])
-        jumlah = st.number_input("Jumlah Unit", min_value=1, step=1)
-        if st.form_submit_button("Simpan Data Sarpras"):
-            if kode and nama_brg:
-                try:
-                    run_query("INSERT INTO sarpras VALUES (?, ?, ?, ?)", (kode, nama_brg, kondisi, int(jumlah)))
-                    st.success(f"Data sarpras **{nama_brg}** berhasil disimpan!")
-                    st.rerun()
-                except sqlite3.IntegrityError:
-                    st.error(f"Kode Barang '{kode}' sudah terdaftar.")
+    tab1, tab2 = st.tabs(["➕ Input Manual", "✏️ Edit / Hapus Data"])
 
+    with tab1:
+        with st.form("form_sarpras", clear_on_submit=True):
+            kode = st.text_input("Kode Barang")
+            nama_brg = st.text_input("Nama Barang")
+            kondisi = st.selectbox("Kondisi", ["Baik", "Rusak Ringan", "Rusak Berat"])
+            jumlah = st.number_input("Jumlah Unit", min_value=1, step=1)
+            if st.form_submit_button("Simpan Data Sarpras"):
+                if kode and nama_brg:
+                    try:
+                        run_query("INSERT INTO sarpras VALUES (?, ?, ?, ?)", (kode, nama_brg, kondisi, int(jumlah)))
+                        st.success(f"Data sarpras **{nama_brg}** berhasil disimpan!")
+                        st.rerun()
+                    except sqlite3.IntegrityError:
+                        st.error(f"Kode Barang '{kode}' sudah terdaftar.")
+
+    with tab2:
+        st.subheader("Pilih Barang Sarpras yang Ingin Diedit atau Dihapus")
+        df_sarpras_s = load_data("sarpras")
+        if not df_sarpras_s.empty:
+            pilih_barang = st.selectbox(
+                "Pilih Kode & Nama Barang", 
+                options=df_sarpras_s['kode_barang'].tolist(), 
+                format_func=lambda x: f"{x} - {df_sarpras_s.loc[df_sarpras_s['kode_barang'] == x, 'nama_barang'].values[0]}"
+            )
+            
+            barang_terpilih = df_sarpras_s[df_sarpras_s['kode_barang'] == pilih_barang].iloc[0]
+            
+            opsi_kondisi = ["Baik", "Rusak Ringan", "Rusak Berat"]
+            idx_k = opsi_kondisi.index(barang_terpilih['kondisi']) if barang_terpilih['kondisi'] in opsi_kondisi else 0
+
+            with st.form("form_edit_sarpras"):
+                new_nama_brg = st.text_input("Nama Barang", value=barang_terpilih['nama_barang'])
+                new_kondisi = st.selectbox("Kondisi", options=opsi_kondisi, index=idx_k)
+                new_jumlah = st.number_input("Jumlah Unit", min_value=1, step=1, value=int(barang_terpilih['jumlah']))
+                
+                col_sr1, col_sr2 = st.columns(2)
+                update_sr_btn = col_sr1.form_submit_button("💾 Perbarui Data")
+                delete_sr_btn = col_sr2.form_submit_button("🗑️ Hapus Data", type="primary")
+                
+                if update_sr_btn:
+                    run_query(
+                        "UPDATE sarpras SET nama_barang = ?, kondisi = ?, jumlah = ? WHERE kode_barang = ?", 
+                        (new_nama_brg, new_kondisi, int(new_jumlah), pilih_barang)
+                    )
+                    st.success("✅ Data sarpras berhasil diperbarui!")
+                    st.rerun()
+                elif delete_sr_btn:
+                    run_query("DELETE FROM sarpras WHERE kode_barang = ?", (pilih_barang,))
+                    st.success("🗑️ Data sarpras berhasil dihapus!")
+                    st.rerun()
+        else:
+            st.info("Belum ada data sarpras.")
+
+    st.divider()
     st.subheader("Daftar Inventaris Sarpras")
     st.dataframe(load_data("sarpras"), use_container_width=True)
 
 # 6.5 GALERI & DOKUMENTASI FOTO
 elif menu == "📸 Galeri & Dokumentasi":
     st.header("📸 Galeri & Dokumentasi Visual Lembaga")
-    tab1, tab2 = st.tabs(["➕ Unggah Foto Baru", "🖼️ Lihat & Kelola Galeri"])
+    tab1, tab2 = st.tabs(["➕ Unggah Foto Baru", "🖼️ Lihat, Edit Keterangan & Hapus Galeri"])
     
     with tab1:
         with st.form("form_galeri", clear_on_submit=True):
@@ -610,7 +719,7 @@ elif menu == "📸 Galeri & Dokumentasi":
                     st.warning("Pilih file foto terlebih dahulu.")
 
     with tab2:
-        st.subheader("Daftar Dokumentasi Visual Tersimpan")
+        st.subheader("Kelola Dokumentasi Visual Tersimpan")
         conn = sqlite3.connect(DB_NAME)
         df_galeri = pd.read_sql_query("SELECT * FROM galeri_foto", conn)
         conn.close()
@@ -625,21 +734,32 @@ elif menu == "📸 Galeri & Dokumentasi":
                 
             if not df_tampil.empty:
                 for index, row in df_tampil.iterrows():
-                    st.markdown(f"### Kategori: {row['kategori']}")
-                    st.write(f"**Keterangan:** {row['keterangan'] if row['keterangan'] else '-'}")
+                    st.markdown(f"### Kategori: {row['kategori']} (ID: {row['id']})")
                     
                     img_path = os.path.join(UPLOAD_DIR, row['nama_file'])
                     if os.path.exists(img_path):
                         st.image(img_path, width=400)
                     else:
                         st.error("File foto fisik tidak ditemukan di direktori.")
+                    
+                    # Form Edit Keterangan & Hapus per Foto
+                    with st.form(f"form_edit_galeri_{row['id']}"):
+                        new_ket = st.text_input("Ubah Keterangan Foto", value=row['keterangan'] if row['keterangan'] else "")
                         
-                    if st.button(f"🗑️ Hapus Foto ID {row['id']}", key=f"del_foto_{row['id']}"):
-                        if os.path.exists(img_path):
-                            os.remove(img_path)
-                        run_query("DELETE FROM galeri_foto WHERE id = ?", (row['id'],))
-                        st.success("Foto berhasil dihapus!")
-                        st.rerun()
+                        col_g1, col_g2 = st.columns(2)
+                        update_g_btn = col_g1.form_submit_button("💾 Perbarui Keterangan")
+                        delete_g_btn = col_g2.form_submit_button("🗑️ Hapus Foto Ini", type="primary")
+                        
+                        if update_g_btn:
+                            run_query("UPDATE galeri_foto SET keterangan = ? WHERE id = ?", (new_ket, row['id']))
+                            st.success("✅ Keterangan foto berhasil diperbarui!")
+                            st.rerun()
+                        elif delete_g_btn:
+                            if os.path.exists(img_path):
+                                os.remove(img_path)
+                            run_query("DELETE FROM galeri_foto WHERE id = ?", (row['id'],))
+                            st.success("🗑️ Foto berhasil dihapus!")
+                            st.rerun()
                     st.divider()
             else:
                 st.info("Tidak ada foto pada kategori ini.")
